@@ -21,7 +21,7 @@ channelMask = 0xFF
 dataLen = 128
 resolution = 8
 channels = []
-actions = list(range(1,10))*5
+actions = list(range(1,4))*2
 random.shuffle(actions)
 
 OFFSET = 121
@@ -42,13 +42,7 @@ ind_channel = 0
 ACTIONS = {
     1: ["Flexion",          "img/Flexion.png",          (None, None),  0],
     2: ["Extension",        "img/Extension.png",        (None, None),  0],
-    3: ["Ulnar Deviation",  "img/UlnarDeviation.png",   (None, None),  0],
-    4: ["Radial Deviation", "img/RadialDeviation.png",  (None, None),  0],
-    5: ["Supination",       "img/Supination.png",       (None, None),  0],
-    6: ["Pronation",        "img/Pronation.png",        (None, None),  0],
-    7: ["Open palm",        "img/Open.png",             (None, None),  0],
-    8: ["Close palm",       "img/Close.png",            (None, None),  0],
-    9: ["Rest",             "img/Rest.png",             (None, None),  0],
+    3: ["Close palm",       "img/Close.png",            (None, None),  0]
     }
 
 class SearchWindow(PageWindow):
