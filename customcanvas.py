@@ -22,8 +22,8 @@ class CustomFigCanvas(FigureCanvas, TimedAnimation):
         self.scale = 20 # Scaling factor for y-axis
         self.xlim = 200 # LImit ont x-axis
         self.amplitude = 0.5 #Initial amplitude value 
-        self.addedData = queue.Queue() # Queue for storing incoming data
-        self.addedLabel = queue.Queue() # Queue for storing labels
+        self.addedData = queue.Queue(maxsize=1000) # Queue for storing incoming data
+        #self.addedLabel = queue.Queue(maxsize=1000) # Queue for storing labels
         self.timeline = np.arange(0,25,5)-25 # A timeline array with values for x-axis ticks
         self.timelinex = np.arange(0,500,100) # Array for x-axis tick positions 
         self.n = np.linspace(0, 299, 500) # An array reprenting the x-axis values
@@ -84,7 +84,10 @@ class CustomFigCanvas(FigureCanvas, TimedAnimation):
 
     #Add new data to the addedData
     def addData(self, value):
+        if self.addedData.full():
+            self.addedData.get_nowait()  # Dequeue an item without blocking
         self.addedData.put(value)
+        #self.addedData.put(value)
         #self.addedLabel.put(value[1])
         
     # Extends the _step() method for the TimedAnimation class, handling exceptions and stopping animation if an error occurs.
@@ -121,32 +124,30 @@ class CustomFigCanvas(FigureCanvas, TimedAnimation):
     def _draw_frame(self, framedata):
         try:
             new_data = self.addedData.get_nowait()
-            self.y = np.roll(self.y,-1,0)
-            self.cue_line = np.roll(self.cue_line,-1)
-            self.y[-1,:] = new_data
-            self.y[-1,:] -= self.extra
-            plottingdata = self.moving_average(self.y[:,0], 15)
-            print(plottingdata.shape)
-            #plottingdata = np.concatenate([self.y,np.zeros([100])])
-
-            #self.n = np.roll(self.n, -1)
-            #self.n[-1] = self.n[-2] + 1
+            self.y = np.roll(self.y, -1, 0)
+            self.cue_line = np.roll(self.cue_line, -1)
+            self.y[-1, :] = new_data
+            self.y[-1, :] -= self.extra
+            plottingdata = self.moving_average(self.y[:, 0], 15)
             
-        #self.labels = np.roll(self.labels, -1)
-        except Exception as e:
-            print("Error:", type(e),e)
+        except queue.Empty:
+            print("Error: Queue is empty")
+            return
         
-       
-                #p.map(self.set_line, range(1,9))
+        except Exception as e:
+            print("Error:", type(e), e)
+            return
+        
         try:
-            self.line0.set_data(range(400),plottingdata[86:])
-            for i in range (1,9): 
-            #return [self.axes.plot(self.y[i-1,:])[0] for i in range(1,9)]#
-                getattr(self, f"line{i}").set_data(range(500),self.y[:,i])
+            # Update plot data here
+            self.line0.set_data(range(400), plottingdata[86:])
+            for i in range(1, 9):
+                getattr(self, f"line{i}").set_data(range(500), self.y[:, i])
             self.line9.set_data(range(500), self.cue_line[:500])
-            self.line10.set_data(400,plottingdata[-1])
+            self.line10.set_data(400, plottingdata[-1])
             self.axes[1].set_ylim(-0.01, self.amplitude * 2)
             self.axes[1].set_yticks([], minor=True)
-            self._drawn_artists = [getattr(self, f"line{i}") for i in range(11)]#, self.line2, self.line3, self.line4, self.line5, self.line6, self.line7, self.line8]#, self.line1_tail]#, self.line1_head]
+            self._drawn_artists = [getattr(self, f"line{i}") for i in range(11)]
         except Exception as e:
-            print("Error after get data",e)
+            print("Error after updating plot data:", type(e), e)
+
