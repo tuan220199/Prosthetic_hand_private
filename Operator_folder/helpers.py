@@ -8,6 +8,17 @@ import seaborn as sns
 DEVICE = "cpu"
 
 def getFeatureMatrix(rawDataMatrix, windowLength, windowOverlap):
+    """
+    Calculate the feature matrix (rms) from raw data matrix using a sliding window approach.
+
+    Args:
+        rawDataMatrix (numpy.ndarray): 2D array containing the raw data, where each row represents a channel and each column represents a sample.
+        windowLength (int): Length of the sliding window in samples.
+        windowOverlap (int): Number of samples overlapping between consecutive windows.
+
+    Returns:
+        numpy.ndarray: Feature matrix calculated from the raw data matrix using the sliding window approach.
+    """
     rms = lambda sig: np.sqrt(np.mean(sig**2))
     nChannels,nSamples = rawDataMatrix.shape    
     I = int(np.floor(nSamples/(windowLength-windowOverlap)))
@@ -21,6 +32,28 @@ def getFeatureMatrix(rawDataMatrix, windowLength, windowOverlap):
     return featMatrixData
 
 def get_data(position= 0):
+    """
+    Load and preprocess data from CSV files and extract features for machine learning.
+
+    Args:
+        position (int, optional): Position identifier for the directory containing CSV files. Defaults to 0.
+
+    Returns:
+        tuple: A tuple containing four numpy arrays:
+            - train_features: Training features extracted from the data.
+            - train_labels: Labels corresponding to the training features.
+            - test_features: Test features extracted from the data.
+            - test_labels: Labels corresponding to the test features.
+
+    This function loads data from CSV files located in a directory specified by 'position'.
+    It preprocesses the data, calculates features using a sliding window approach, and splits the data into training and testing sets based on file names.
+    Features are extracted using a sliding window approach with specified window length and overlap.
+    The function returns four numpy arrays containing training features, training labels, test features, and test labels.
+
+    Note:
+        The function assumes the availability of the getFeatureMatrix function for feature extraction.
+
+    """
     Fs = 500
     windowLength = int(np.floor(0.1*Fs))  #100ms
     windowOverlap =  int(np.floor(50/100 * windowLength))
@@ -56,11 +89,57 @@ def get_data(position= 0):
     return train_features, train_labels, test_features, test_labels
 
 def roll_data(X_0, shift):
+    """
+    Roll (circular shift) the columns of a 2D numpy array.
+
+    Args:
+        X_0 (numpy.ndarray): Input 2D array.
+        shift (int): Number of positions to shift the columns. Positive values shift to the left, negative values shift to the right.
+
+    Returns:
+        numpy.ndarray: The input array with its columns rolled (shifted).
+
+    Example:
+        >>> X_0 = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+        >>> roll_data(X_0, 1)
+        array([[3, 1, 2],
+               [6, 4, 5],
+               [9, 7, 8]])
+    """
     return np.roll(X_0,shift,1)
 
 def get_all_data(X, y, v_shift = None):
+    """
+    Generate augmented dataset by rolling the input data along columns.
+
+    Args:
+        X (list of numpy.ndarray): List of 2D numpy arrays representing input data.
+        y (numpy.ndarray): 1D numpy array representing target labels.
+        v_shift (int or list of int, optional): Vertical shift to apply to each input array. 
+            If not provided, a range of shifts from -4 to 3 will be applied.
+
+    Returns:
+        tuple: A tuple containing three numpy arrays:
+            - all_X: Augmented input data with rolled columns.
+            - all_y: Corresponding target labels.
+            - all_shift: Shift values applied to each sample.
+
+    If v_shift is not provided, the function applies a range of shifts from -4 to 3 to the input data X.
+    It rolls each input array along its columns and concatenates them into a single augmented dataset.
+    The corresponding labels y are duplicated accordingly.
+    The function returns three numpy arrays: all_X containing the augmented input data, all_y containing the corresponding labels,
+    and all_shift containing the applied shift values for each sample.
+
+    If v_shift is provided, the function applies the specified vertical shift to each input array in X.
+    The labels and shift values are duplicated accordingly, and the function returns the concatenated arrays.
+
+    Examples:
+        >>> X = [np.array([[1, 2, 3], [4, 5, 6]]), np.array([[7, 8, 9], [10, 11, 12]])]
+        >>> y = np.array([0, 1])
+        >>> all_X, all_y, all_shift = get_all_data(X, y)
+    """
     if not v_shift:
-        all_X = np.zeros([X.shape[0],8, 8],dtype='float32')
+        all_X = np.zeros([X.shape[0],8, 8],dtype='float32') # 3D array: No. samples, 8: 8 features, 8: -4=>3 roll
         all_y = np.zeros([ y.shape[0],8],dtype='float32')
         all_shift = np.zeros([ y.shape[0],8],dtype='int')
 
@@ -77,6 +156,31 @@ def get_all_data(X, y, v_shift = None):
         return np.concatenate(X).reshape(-1,8), np.concatenate(y).reshape(-1,1), np.concatenate(all_shift).reshape(-1,1)
 
 def get_shift_data(all_X, all_shift, all_y):
+    """
+    Combine the original feature data with shifted feature data for each class.
+
+    Args:
+        all_X (numpy.ndarray): Original feature data matrix of shape (n_samples, n_features).
+        all_shift (numpy.ndarray): Shifted feature data matrix of shape (n_samples, n_shift_features).
+        all_y (numpy.ndarray): Array of class labels of shape (n_samples,).
+
+    Returns:
+        numpy.ndarray: Concatenated feature data matrix with original features for each class.
+        numpy.ndarray: Concatenated feature data matrix with shifted features for each class.
+        numpy.ndarray: Shift labels corresponding to the original feature data.
+        numpy.ndarray: Shift labels corresponding to the shifted feature data.
+        numpy.ndarray: Array of class labels for the concatenated data.
+
+    This function combines the original feature data with shifted feature data for each class. It concatenates the
+    original feature data (all_X) with the shifted feature data (all_shift) along the feature axis. It also shuffles
+    the shifted feature data within each class to create a corresponding set of shifted features (all_X2).
+    Additionally, it constructs arrays for the shift labels (all_shift_1 and all_shift_2) and the class labels (all_y_).
+    The function returns all these arrays for further processing.
+
+    Note:
+        The function assumes that the original feature data (all_X) and the shifted feature data (all_shift) have the
+        same number of samples and that each sample corresponds to a class label in the array all_y.
+    """
     all_X_shift = np.concatenate([all_X, all_shift], axis=1)
     all_X1 = np.zeros_like(all_X)
     all_X2 = np.zeros_like(all_X)
@@ -98,6 +202,33 @@ def get_shift_data(all_X, all_shift, all_y):
     return all_X1, all_X2, all_shift_1, all_shift_2, all_y_
 
 def get_shift_data1(h_X,v_X, h_shift, v_shift, h_y, v_y):
+    """
+    Process horizontal and vertical data with shifts for classification.
+
+    Args:
+        h_X (numpy.ndarray): Horizontal feature data.
+        v_X (numpy.ndarray): Vertical feature data.
+        h_shift (numpy.ndarray): Horizontal shift data.
+        v_shift (numpy.ndarray): Vertical shift data.
+        h_y (numpy.ndarray): Labels for horizontal data.
+        v_y (numpy.ndarray): Labels for vertical data.
+
+    Returns:
+        tuple: A tuple containing:
+            all_X1 (numpy.ndarray): Processed horizontal feature data excluding shifts.
+            all_X2 (numpy.ndarray): Processed vertical feature data excluding shifts.
+            h_shift (numpy.ndarray): Shift data for horizontal data.
+            v_shift (numpy.ndarray): Shift data for vertical data.
+            h_y (numpy.ndarray): Labels for horizontal data.
+
+    This function processes the horizontal and vertical feature data with their respective shifts
+    for classification purposes. It concatenates the feature data with the shift data, shuffles 
+    them, and then separates them back into their respective feature data arrays (excluding shifts)
+    and shift arrays.
+
+    Each class label is processed separately, and the resulting arrays contain data specific to 
+    each class label.
+    """
     h_X_shift = np.concatenate([h_X, h_shift], axis=1)
     v_X_shift = np.concatenate([v_X, v_shift], axis=1)
 
@@ -126,6 +257,25 @@ def get_shift_data1(h_X,v_X, h_shift, v_shift, h_y, v_y):
     return all_X1, all_X2, h_shift, v_shift, h_y
 
 def get_operators(_n_rotations, order):
+    """
+    Generate rotation operators for quantum circuits.
+
+    Args:
+        _n_rotations (int): Total number of rotation operators to generate.
+        order (int): Order of the rotation operators.
+
+    Returns:
+        tuple: A tuple containing:
+            used_bases (list): List of rotation operators used in the quantum circuits.
+            phi1 (torch.Tensor): Base rotation operator matrix.
+
+    This function generates rotation operators for quantum circuits based on the specified order
+    and the total number of rotation operators. It creates a base rotation operator matrix `phi1`
+    with diagonal entries shifted by one position to the left. Then, it generates rotation operators
+    by raising `phi1` to various powers up to `_n_rotations`. Finally, it selects a subset of these
+    rotation operators (`used_bases`) for use in the quantum circuits, consisting of the first 17 and
+    last 16 rotation operators from the generated list.
+    """
     M = torch.diag(torch.ones(order)).roll(-1,1)
 
     phi1 = torch.zeros((8*order, 8*order))
@@ -137,6 +287,23 @@ def get_operators(_n_rotations, order):
     return used_bases, phi1
 
 def plot_cfs_mat(predicted, labels):
+    """
+    Plot a confusion matrix heatmap based on predicted and actual labels.
+
+    Args:
+        predicted (numpy.ndarray): Array containing predicted labels.
+        labels (numpy.ndarray): Array containing actual labels.
+
+    Returns:
+        seaborn.matrix.ClusterGrid: Seaborn cluster grid object representing the confusion matrix heatmap.
+
+    This function generates a confusion matrix heatmap based on the predicted and actual labels.
+    It first initializes an empty confusion matrix `cf_mat` with dimensions (6, 6). Then, it iterates
+    through each sample in the predicted and actual label arrays and increments the corresponding entry
+    in the confusion matrix. Finally, it plots the confusion matrix heatmap using Seaborn's heatmap
+    function, normalizing the values to the range [0, 1] and annotating each cell with the respective
+    count of occurrences.
+    """
     cf_mat = np.zeros((6,6))
     for i in range(predicted.shape[0]):
         cf_mat[predicted[i], labels[i]] += 1
@@ -144,6 +311,23 @@ def plot_cfs_mat(predicted, labels):
     return sns.heatmap(cf_mat/6, annot=True,cmap='Blues', cbar=False)
 
 def get_centroids(encoder, loader):
+    """
+    Calculate the centroids of each class using the provided encoder and data loader.
+
+    Args:
+        encoder (torch.nn.Module): Encoder model used to encode input data.
+        loader (torch.utils.data.DataLoader): DataLoader containing the input data.
+
+    Returns:
+        torch.Tensor: Tensor containing the centroids of each class.
+
+    This function calculates the centroids of each class using the provided encoder model and data loader.
+    It first sets the encoder to evaluation mode and initializes tensors to store the centroids, counts, and
+    flags indicating if the first instance of each class has been encountered. Then, it iterates through the
+    data loader, encoding each input sample using the encoder and updating the corresponding centroid and
+    count tensors. Finally, it divides the accumulated centroid vectors by the corresponding counts to obtain
+    the centroids of each class and returns the result.
+    """
     encoder.eval()
     centroids = torch.zeros(6, 192)
     first = torch.zeros(6)
