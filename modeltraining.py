@@ -3,53 +3,53 @@ import numpy as np
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
 from joblib import  load
-#from encoder import Encoder as E
+from encoder import Encoder as E
 import torch
 from torch.autograd import Variable
 
 # This is a feed forward neural network includes encoder and classifier
 # Combining an encoder and a classifier into a single neural network, model can learn to
 # extract relevant features from input data and use those features for making predictions or classifications 
-# class FFNN(torch.nn.Module):
-#     def __init__(self, inputSize, outputSize):
-#         super(FFNN, self).__init__()
+class FFNN(torch.nn.Module):
+    def __init__(self, inputSize, outputSize):
+        super(FFNN, self).__init__()
 
-#         # encoder transform the input data into a suitable representation for classifier
-#         # a single linear layer followed by a sigmoid activation function
-#         # This layer reduces dimensionality of input data and applies a non-linear transformation
-#         # to learn complex pattern  
-#         self.encoder = torch.nn.Sequential(
-#             torch.nn.Linear(inputSize, 9, bias=False),
-#             torch.nn.Sigmoid()
-#         )
-#         self.classifer = torch.nn.Sequential(
-#             torch.nn.Linear(9, outputSize, bias=False),
-#             # torch.nn.Softmax(dim=1)
-#         )
+        # encoder transform the input data into a suitable representation for classifier
+        # a single linear layer followed by a sigmoid activation function
+        # This layer reduces dimensionality of input data and applies a non-linear transformation
+        # to learn complex pattern  
+        self.encoder = torch.nn.Sequential(
+            torch.nn.Linear(inputSize, 9, bias=False),
+            torch.nn.Sigmoid()
+        )
+        self.classifer = torch.nn.Sequential(
+            torch.nn.Linear(9, outputSize, bias=False),
+            # torch.nn.Softmax(dim=1)
+        )
 
-#     def forward(self, x, encoder=None):
-#         if not encoder:
-#             encoder = self.encoder
-#         z = encoder(x)
-#         class_z = self.classifer(z)
+    def forward(self, x, encoder=None):
+        if not encoder:
+            encoder = self.encoder
+        z = encoder(x)
+        class_z = self.classifer(z)
 
-#         return class_z
+        return class_z
 logRegres  = load('LogisticRegression1.joblib')
 #ANN_model = load('ANN.joblib')
 
-# classifier = FFNN(8,9) # This indicates that the neural network expects input data with 8 features and will produce output predictions across 9 classes.
-# encoder = E(8,8)
-# encoder.load_state_dict(torch.load("gForceSDKPython-master/encoder.pt")) # contains the learned parameters (weights and biases) of the encoder model
-# recovered_points_= torch.load("gForceSDKPython-master/reference_points.pt") # These points represent reference points for inference or evaluation in the model
-# print(recovered_points_)
-# classifier.load_state_dict(torch.load("gForceSDKPython-master/classifier.pt")) # contains the weights and biases learned during training.
-# classifier.eval() # sets the model to evaluation mode.
-# encoder.eval() # sets the model to evaluation mode.
+classifier = FFNN(8,3) # This indicates that the neural network expects input data with 8 features and will produce output predictions across 9 classes.
+encoder = E(8,8)
+encoder.load_state_dict(torch.load("encoder.pt")) # contains the learned parameters (weights and biases) of the encoder model
+recovered_points_= torch.load("reference_points.pt") # These points represent reference points for inference or evaluation in the model
+print(recovered_points_)
+classifier.load_state_dict(torch.load("classifier.pt")) # contains the weights and biases learned during training.
+classifier.eval() # sets the model to evaluation mode.
+encoder.eval() # sets the model to evaluation mode.
 
 # # This model is without opeartor. It is similiarily to the classifier model but do not have encoder
-# modelWOoperator = FFNN(8,9)
-# modelWOoperator.load_state_dict(torch.load("gForceSDKPython-master/modelwoOperator.pt")) # loaded from the file: parameters learned during training.
-# modelWOoperator.eval() # evaluation mode ensures consistent behavior during inference.
+modelWOoperator = FFNN(8,3)
+modelWOoperator.load_state_dict(torch.load("modelwoOperator.pt")) # loaded from the file: parameters learned during training.
+modelWOoperator.eval() # evaluation mode ensures consistent behavior during inference.
 
 DEVICE = torch.device("cpu") # operations is in CPU or GPU.
 M = torch.diag(torch.ones(8)).roll(-1,1) # Create a diagnoise matrix then shift it to the right
@@ -111,12 +111,11 @@ def loadLogRegr():
     return 1
 
 def loadwoOperator():
-    return 1
+    return 2
 
 
 def loadwithOperator():
-    # return 3
-    return 1
+    return 3
 
 from scipy.stats import t
 
@@ -140,34 +139,32 @@ def get_class(modeltype, X):
         return int(logRegres.predict(X)[0])
     elif modeltype == 2: #ses a neural network model (modelWOoperator) to predict the class.
         #return int(ANN_model.predict(X)[0])
-        # with torch.no_grad(): # disable gradient computation
-        #     return modelWOoperator(X).argmax().item()
-        return int(logRegres.predict(X)[0])
+        with torch.no_grad(): # disable gradient computation
+            return modelWOoperator(X).argmax().item()
     elif modeltype == 3: #performs particle filtering to estimate the class.
-        return int(logRegres.predict(X)[0])
-        # with torch.no_grad(): # disable gradient computation
-        #     particles = motion_model(particles)
-        #     y1 = encoder(X)
-        #     distances = np.zeros(8)
-        #     for d in (range(-4,4)):
-        #         x_rotated = y1.matmul(used_bases[d]).repeat(N_points,1)
-        #         distances[d] = ((x_rotated-recovered_points_)**2).mean(1).topk(2, largest=False)[0].mean()
-        #     position = distances.argmin()
+        with torch.no_grad(): # disable gradient computation
+            particles = motion_model(particles)
+            y1 = encoder(X)
+            distances = np.zeros(8)
+            for d in (range(-4,4)):
+                x_rotated = y1.matmul(used_bases[d]).repeat(N_points,1)
+                distances[d] = ((x_rotated-recovered_points_)**2).mean(1).topk(2, largest=False)[0].mean()
+            position = distances.argmin()
             
-        #     weights = measurement_likelihood(position, particles, degrees_of_freedom)
-        #     weights /= np.sum(weights) # Normalize weights
+            weights = measurement_likelihood(position, particles, degrees_of_freedom)
+            weights /= np.sum(weights) # Normalize weights
 
-        #     # # Resampling Step
-        #     indices = np.random.choice(range(num_particles), size=num_particles, replace=True, p=weights.flatten())
-        #     particles = particles[indices]
-        #     weights = np.ones(num_particles) / num_particles
+            # # Resampling Step
+            indices = np.random.choice(range(num_particles), size=num_particles, replace=True, p=weights.flatten())
+            particles = particles[indices]
+            weights = np.ones(num_particles) / num_particles
 
-        #     # # State estimation
-        #     estimated_state = np.average(particles, axis=0, weights=weights)
+            # # State estimation
+            estimated_state = np.average(particles, axis=0, weights=weights)
         
-        #     x = estimated_state
+            x = estimated_state
 
-        #     curr_shift = (round(x)+4)%8-4
-        #     y_tr_est1 = y1.matmul(used_bases[curr_shift])
-        #     y_tr1 = classifier(y_tr_est1).argmax()
-        #     return y_tr1.item()
+            curr_shift = (round(x)+4)%8-4
+            y_tr_est1 = y1.matmul(used_bases[curr_shift])
+            y_tr1 = classifier(y_tr_est1).argmax()
+            return y_tr1.item()
