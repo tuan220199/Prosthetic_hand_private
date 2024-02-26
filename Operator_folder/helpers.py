@@ -63,11 +63,11 @@ def get_data(position= 0):
     test_features = np.zeros([0,8])
     test_labels = np.zeros([0])
     #pathh = '/home/master_thesis/Prosthetic_hand_private/Subject_3/Shift_'
-    for shift in range(0,5): 
-        for files in sorted(os.listdir(f'Subject_3/Shift_{shift}/')):
+    for shift in range(0,1): 
+        for files in sorted(os.listdir(f'Subject_4/Shift_{shift}/')):
             _, class_,_, rep_ = files.split('_')
             if int(class_) in [1,2,3]:
-                df = pd.read_csv(f'Subject_3/Shift_{shift}/{files}',skiprows=0,sep=' ',header=None)
+                df = pd.read_csv(f'Subject_4/Shift_{shift}/{files}',skiprows=0,sep=' ',header=None)
                 data_arr = np.stack([np.array(df.T[i::8]).T.flatten().astype('float32') for i in range (8)])
                 data_arr -= 121
                 data_arr /= 255.0
