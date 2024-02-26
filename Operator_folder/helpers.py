@@ -62,29 +62,31 @@ def get_data(position= 0):
     train_labels = np.zeros([0])
     test_features = np.zeros([0,8])
     test_labels = np.zeros([0])
-    pathh = '/home/ros-lab/Desktop/Armband/gForceSDKPython-masterD3/Subject_5/Shift_'
-    for files in sorted(os.listdir(f'{pathh}{position}/')):
-        _, class_,_, rep_ = files.split('_')
-        df = pd.read_csv(f'{pathh}{position}/{files}',skiprows=0,sep=' ',header=None)
-        data_arr = np.stack([np.array(df.T[i::8]).T.flatten().astype('float32') for i in range (8)])
-        data_arr -= 121
-        data_arr /= 255.0
-        feaData = getFeatureMatrix(data_arr, windowLength, windowOverlap)
-        
-        if not class_.startswith('9'):
-            rms_feature = feaData.sum(0)
-            baseline = 2.5*rms_feature[-50:].mean()
-            start_ = np.argmax(rms_feature[::1]>baseline)
-            end_  = -np.argmax(rms_feature[::-1]>baseline)
-            feaData = feaData.T[start_:end_]
-        else:
-            feaData = feaData.T[50:300]
-        if rep_.startswith('5') or rep_.startswith('4'):
-            test_features = np.concatenate([test_features,feaData])
-            test_labels = np.concatenate([test_labels,np.ones_like(feaData)[:,0]*int(class_)-1])
-        else:
-            train_features = np.concatenate([train_features,feaData])
-            train_labels = np.concatenate([train_labels,np.ones_like(feaData)[:,0]*int(class_)-1])
+    #pathh = '/home/master_thesis/Prosthetic_hand_private/Subject_3/Shift_'
+    for shift in range(0,5): 
+        for files in sorted(os.listdir(f'Subject_3/Shift_{shift}/')):
+            _, class_,_, rep_ = files.split('_')
+            if int(class_) in [1,2,3]:
+                df = pd.read_csv(f'Subject_3/Shift_{shift}/{files}',skiprows=0,sep=' ',header=None)
+                data_arr = np.stack([np.array(df.T[i::8]).T.flatten().astype('float32') for i in range (8)])
+                data_arr -= 121
+                data_arr /= 255.0
+                feaData = getFeatureMatrix(data_arr, windowLength, windowOverlap)
+                
+                if not class_.startswith('9'):
+                    rms_feature = feaData.sum(0)
+                    baseline = 2*rms_feature[-50:].mean()
+                    start_ = np.argmax(rms_feature[::1]>baseline)
+                    end_  = -np.argmax(rms_feature[::-1]>baseline)
+                    feaData = feaData.T[start_:end_]
+                else:
+                    feaData = feaData.T
+                if rep_.startswith('2'):
+                    test_features = np.concatenate([test_features,feaData])
+                    test_labels = np.concatenate([test_labels,np.ones_like(feaData)[:,0]*int(class_)-1])
+                else:
+                    train_features = np.concatenate([train_features,feaData])
+                    train_labels = np.concatenate([train_labels,np.ones_like(feaData)[:,0]*int(class_)-1])
 
     return train_features, train_labels, test_features, test_labels
 
