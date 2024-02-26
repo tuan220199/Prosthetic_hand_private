@@ -1,6 +1,21 @@
 
 from torch.utils.data import Dataset
 class CustomSignalData(Dataset):
+    """
+    Custom dataset class for signal data.
+
+    Args:
+    - x (torch.Tensor or numpy.ndarray): Input data.
+    - y (torch.Tensor or numpy.ndarray): Target labels.
+    - z (torch.Tensor or numpy.ndarray, optional): Additional data (default is None, in which case it is set to y).
+    - a (torch.Tensor or numpy.ndarray, optional): Additional data (default is None, in which case it is set to y).
+    - transform (callable, optional): Optional transform to be applied to the input data (default is None).
+
+    Note:
+    - This dataset assumes that the input data `x`, target labels `y`, and any additional data `z` and `a` are provided.
+    - If `z` or `a` is not provided, it defaults to `y`.
+    - If a transform is provided, it will be applied to the input data.
+    """
     def __init__(self, x, y,z=None, a= None, transform= None):
         self.x = x
         self.y = y
