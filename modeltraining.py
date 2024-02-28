@@ -35,7 +35,7 @@ class FFNN(torch.nn.Module):
 
         return class_z
 logRegres  = load('LogisticRegression1.joblib')
-RNN_model = load('RNN.joblib')
+#RNN_model = load('RNN.joblib')
 
 classifier = FFNN(8,3) # This indicates that the neural network expects input data with 8 features and will produce output predictions across 9 classes.
 encoder = E(8,8)
@@ -141,30 +141,30 @@ def get_class(modeltype, X):
         with torch.no_grad(): # disable gradient computation
             return modelWOoperator(X).argmax().item()
     elif modeltype == 3: #performs particle filtering to estimate the class.
-        return int(RNN_model.predict(X)[0])
-        # with torch.no_grad(): # disable gradient computation
-        #     particles = motion_model(particles)
-        #     y1 = encoder(X)
-        #     distances = np.zeros(8)
-        #     for d in (range(-4,4)):
-        #         x_rotated = y1.matmul(used_bases[d]).repeat(N_points,1)
-        #         distances[d] = ((x_rotated-recovered_points_)**2).mean(1).topk(2, largest=False)[0].mean()
-        #     position = distances.argmin()
+        # return int(RNN_model.predict(X)[0])
+        with torch.no_grad(): # disable gradient computation
+            particles = motion_model(particles)
+            y1 = encoder(X)
+            distances = np.zeros(8)
+            for d in (range(-4,4)):
+                x_rotated = y1.matmul(used_bases[d]).repeat(N_points,1)
+                distances[d] = ((x_rotated-recovered_points_)**2).mean(1).topk(2, largest=False)[0].mean()
+            position = distances.argmin()
             
-        #     weights = measurement_likelihood(position, particles, degrees_of_freedom)
-        #     weights /= np.sum(weights) # Normalize weights
+            weights = measurement_likelihood(position, particles, degrees_of_freedom)
+            weights /= np.sum(weights) # Normalize weights
 
-        #     # # Resampling Step
-        #     indices = np.random.choice(range(num_particles), size=num_particles, replace=True, p=weights.flatten())
-        #     particles = particles[indices]
-        #     weights = np.ones(num_particles) / num_particles
+            # # Resampling Step
+            indices = np.random.choice(range(num_particles), size=num_particles, replace=True, p=weights.flatten())
+            particles = particles[indices]
+            weights = np.ones(num_particles) / num_particles
 
-        #     # # State estimation
-        #     estimated_state = np.average(particles, axis=0, weights=weights)
+            # # State estimation
+            estimated_state = np.average(particles, axis=0, weights=weights)
         
-        #     x = estimated_state
+            x = estimated_state
 
-        #     curr_shift = (round(x)+4)%8-4
-        #     y_tr_est1 = y1.matmul(used_bases[curr_shift])
-        #     y_tr1 = classifier(y_tr_est1).argmax()
-        #     return y_tr1.item()
+            curr_shift = (round(x)+4)%8-4
+            y_tr_est1 = y1.matmul(used_bases[curr_shift])
+            y_tr1 = classifier(y_tr_est1).argmax()
+            return y_tr1.item()

@@ -16,7 +16,10 @@ from subprocess import Popen, PIPE
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 from joblib import dump, load
-import tensorflow as tf
+# import torch
+# from encoder import Encoder as E
+# from helpers import get_data, get_all_data, get_shift_data, get_operators, plot_cfs_mat, roll_data
+#import tensorflow as tf
 
 now = datetime.now()
 dt_string = now.strftime("%d/%m/%Y%H:%M:%S")
@@ -418,28 +421,28 @@ class SearchWindow(PageWindow):
                     test_features_reshaped = test_features.reshape(test_features.shape[0], test_features.shape[1], -1)
 
 
-                    # Define the RNN model
-                    rnn_model = tf.keras.Sequential([
-                        tf.keras.layers.SimpleRNN(64, activation='relu', input_shape=train_features_reshaped.shape[1:]),  # Use train_features_reshaped.shape[1:] as input shape
-                        tf.keras.layers.Dense(128, activation='relu'),  # Adding an additional dense layer with 128 units
-                        tf.keras.layers.Dense(128, activation='relu'),  # Adding another dense layer with 128 units
-                        tf.keras.layers.Dense(3, activation='softmax')
-                    ])
+                    # # Define the RNN model
+                    # rnn_model = tf.keras.Sequential([
+                    #     tf.keras.layers.SimpleRNN(64, activation='relu', input_shape=train_features_reshaped.shape[1:]),  # Use train_features_reshaped.shape[1:] as input shape
+                    #     tf.keras.layers.Dense(128, activation='relu'),  # Adding an additional dense layer with 128 units
+                    #     tf.keras.layers.Dense(128, activation='relu'),  # Adding another dense layer with 128 units
+                    #     tf.keras.layers.Dense(3, activation='softmax')
+                    # ])
 
-                    # Compile the RNN model
-                    rnn_model.compile(optimizer='adam',
-                                    loss='sparse_categorical_crossentropy',  # Use this if train_labels are integers
-                                    metrics=['accuracy'])
+                    # # Compile the RNN model
+                    # rnn_model.compile(optimizer='adam',
+                    #                 loss='sparse_categorical_crossentropy',  # Use this if train_labels are integers
+                    #                 metrics=['accuracy'])
 
-                    # Train the RNN model
-                    history = rnn_model.fit(train_features_reshaped, train_labels, epochs=10, batch_size=32, validation_split=0.2)
+                    # # Train the RNN model
+                    # history = rnn_model.fit(train_features_reshaped, train_labels, epochs=10, batch_size=32, validation_split=0.2)
 
-                    # Evaluate the RNN model on training and test data
-                    train_loss, train_accuracy = rnn_model.evaluate(train_features_reshaped, train_labels, verbose=0)
-                    test_loss, test_accuracy = rnn_model.evaluate(test_features_reshaped, test_labels, verbose=0)
+                    # # Evaluate the RNN model on training and test data
+                    # train_loss, train_accuracy = rnn_model.evaluate(train_features_reshaped, train_labels, verbose=0)
+                    # test_loss, test_accuracy = rnn_model.evaluate(test_features_reshaped, test_labels, verbose=0)
 
-
-                    if accuracy_list and test_accuracy:
+                    
+                    if accuracy_list:
                         self.trainButton.setText("Done")
                     else:
                         print("Error:")
