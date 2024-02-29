@@ -400,12 +400,16 @@ class SearchWindow(PageWindow):
                                     feaData = feaData.T[start_:end_]
                                 else:
                                     feaData = feaData.T
-                                if rep_.startswith('2'):
-                                    test_features = np.concatenate([test_features,feaData])
-                                    test_labels = np.concatenate([test_labels,np.ones_like(feaData)[:,0]*int(class_)-1])
-                                else:
-                                    train_features = np.concatenate([train_features,feaData])
-                                    train_labels = np.concatenate([train_labels,np.ones_like(feaData)[:,0]*int(class_)-1])
+
+                                train_features = np.concatenate([train_features,feaData])
+                                train_labels = np.concatenate([train_labels,np.ones_like(feaData)[:,0]*int(class_)-1])
+
+                                # if rep_.startswith('2'):
+                                #     test_features = np.concatenate([test_features,feaData])
+                                #     test_labels = np.concatenate([test_labels,np.ones_like(feaData)[:,0]*int(class_)-1])
+                                # else:
+                                #     train_features = np.concatenate([train_features,feaData])
+                                #     train_labels = np.concatenate([train_labels,np.ones_like(feaData)[:,0]*int(class_)-1])
 
                     reg = LogisticRegression(penalty='l2', C=100).fit(train_features, train_labels)
                     # reg.score(train_features, train_labels)#, reg.score(test_features, test_labels)
@@ -415,10 +419,10 @@ class SearchWindow(PageWindow):
                     # disp.plot()
 
                     dump(reg, 'LogisticRegression1.joblib')
-                    accuracy_list = [reg.score(test_features,test_labels)]
+                    accuracy_list = [reg.score(train_features,train_labels)]
                     
-                    train_features_reshaped = train_features.reshape(train_features.shape[0], train_features.shape[1], -1)
-                    test_features_reshaped = test_features.reshape(test_features.shape[0], test_features.shape[1], -1)
+                    #train_features_reshaped = train_features.reshape(train_features.shape[0], train_features.shape[1], -1)
+                    #test_features_reshaped = test_features.reshape(test_features.shape[0], test_features.shape[1], -1)
 
 
                     # # Define the RNN model
