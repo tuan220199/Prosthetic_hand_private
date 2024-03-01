@@ -187,8 +187,8 @@ class SearchWindow(PageWindow):
                 while True:
                     if len(channels)>128: 
                         break
-                self.myFig = CustomFigCanvaswoRMS()
-                self.layout.addWidget(self.myFig)
+                #self.myFig = CustomFigCanvaswoRMS()
+                #self.layout.addWidget(self.myFig)
                 #Add the callbackfunc to ..
 
                 # function continously sends data and update UI

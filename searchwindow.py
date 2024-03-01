@@ -12,7 +12,6 @@ import time
 import numpy as np
 import numpy as np
 import pandas as pd
-from subprocess import Popen, PIPE
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 from joblib import dump, load
@@ -21,12 +20,12 @@ from joblib import dump, load
 # from helpers import get_data, get_all_data, get_shift_data, get_operators, plot_cfs_mat, roll_data
 #import tensorflow as tf
 
-now = datetime.now()
-dt_string = now.strftime("%d/%m/%Y%H:%M:%S")
-os.makedirs(os.path.dirname(f"recordingfiles/{dt_string}.txt"), exist_ok=True)
-file1 = open(f"recordingfiles/{dt_string}.txt","w")
+# now = datetime.now()
+# dt_string = now.strftime("%d/%m/%Y%H:%M:%S")
+# os.makedirs(os.path.dirname(f"recordingfiles/{dt_string}.txt"), exist_ok=True)
+# file1 = open(f"recordingfiles/{dt_string}.txt","w")
 
-sampRate = 500
+sampRate = 1000
 channelMask = 0xFF
 dataLen = 128
 resolution = 8
@@ -705,7 +704,7 @@ def dataSendLoop(addData_callbackFunc):
                         mySrc.data_signal.emit([rms] + list(mean_in_window))
                     FORWARD += 25*8 
                 time.sleep(47/1000)
-
+                print(f'Current cursor: {FORWARD} - Collected data: {len(channels)}')
 
             except Exception as e:
                 print("Error during plotting:", type(e),e) 
