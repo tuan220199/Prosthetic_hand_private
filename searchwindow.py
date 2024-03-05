@@ -15,15 +15,18 @@ import pandas as pd
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 from joblib import dump, load
+import matplotlib.pyplot as plt
+import csv
 # import torch
 # from encoder import Encoder as E
 # from helpers import get_data, get_all_data, get_shift_data, get_operators, plot_cfs_mat, roll_data
 #import tensorflow as tf
 
-# now = datetime.now()
-# dt_string = now.strftime("%d/%m/%Y%H:%M:%S")
-# os.makedirs(os.path.dirname(f"recordingfiles/{dt_string}.txt"), exist_ok=True)
-# file1 = open(f"recordingfiles/{dt_string}.txt","w")
+now = datetime.now()
+dt_string = now.strftime("%d/%m/%Y%H:%M:%S")
+os.makedirs(os.path.dirname(f"recordingfiles/{dt_string}.txt"), exist_ok=True)
+file1 = open(f"recordingfiles/{dt_string}.txt","w")
+
 
 sampRate = 1000
 channelMask = 0xFF
@@ -47,6 +50,7 @@ packet_cnt = 0
 start_time = 0
 FORWARD = 0
 ind_channel = 0
+delay_time = []
 
 ACTIONS = {
     1: ["Flexion",          "img/Flexion.png",          (None, None),  0],
@@ -207,6 +211,7 @@ class SearchWindow(PageWindow):
         def handleButton():
             global reg,  ACTION, REP, PEAK, PEAK_MULTIPLIER, OFFSET, STARTED, BASELINE, BASELINE_MULTIPLIER
             global OFFSET_RMS, file1
+            global delay_time
             
             if button == "scan":
                 """
@@ -367,13 +372,21 @@ class SearchWindow(PageWindow):
                 QtWidgets.qApp.processEvents()
                 reg = None
             elif button == "skipSignal":
-                FORWARD += 1000
+                #FORWARD += 1000
+                file2 = "recordingfiles/new_timer_5.csv"
+                with open(file2, 'w', newline='') as csvfile:
+                    # Create a CSV writer object
+                    csv_writer = csv.writer(csvfile)
+                    
+                    # Write each element of the list 'a' as a separate row in the CSV file
+                    for item in delay_time:
+                        csv_writer.writerow([item])
 
             elif button == "runModel":
                     subject = self.subj_name.text()
                     No_shift = str(int(self.subj_shift.text()) + 1)
 
-                    Fs = 500
+                    Fs = 1000
                     windowLength = int(np.floor(0.1*Fs))  #160ms
                     windowOverlap =  int(np.floor(50/100 * windowLength))
 
@@ -683,28 +696,34 @@ def dataSendLoop(addData_callbackFunc):
     """
     mySrc = Communicate()
     mySrc.data_signal.connect(addData_callbackFunc)
-    #time.sleep(3)
-    global PEAK, PEAK_MULTIPLIER, BASELINE, OFFSET_RMS, BASELINE_MULTIPLIER,ACTIONS,FORWARD, reg
+    global PEAK, PEAK_MULTIPLIER, BASELINE, OFFSET_RMS, BASELINE_MULTIPLIER,ACTIONS,FORWARD, delay_time
+
     while(True):
         #channels[i:i+50*8]
-        for j in range (8):
-            try:
-                datawindow = channels[FORWARD:FORWARD+50*8]
-                if datawindow:
-                    datastack = np.stack([np.array(datawindow[k::8]) for k in range (8)]).astype('float32') - OFFSET
-                    mean_in_window = datastack.mean(1) # should have size (8,)
-                    rms_ = rms_formuula(datastack/255)
-                    rms = rms_.sum()- OFFSET_RMS
-                    
-                    if OFFSET_RMS:
-                        mySrc.data_signal.emit([rms] + list(mean_in_window))
-                    else:
-                        BASELINE = min(rms*BASELINE_MULTIPLIER, BASELINE)
-                        PEAK = max(rms*PEAK_MULTIPLIER, PEAK)
-                        mySrc.data_signal.emit([rms] + list(mean_in_window))
-                    FORWARD += 25*8 
+        #for j in range (8):
+        try:
+            datawindow = channels[FORWARD:FORWARD+100*8]
+            if datawindow:
+                datastack = np.stack([np.array(datawindow[k::8]) for k in range (8)]).astype('float32') - OFFSET
+                mean_in_window = datastack.mean(1) # should have size (8,)
+                rms_ = rms_formuula(datastack/255)
+                rms = rms_.sum()- OFFSET_RMS
+                
+                if OFFSET_RMS:
+                    mySrc.data_signal.emit([rms] + list(mean_in_window))
+                else:
+                    BASELINE = min(rms*BASELINE_MULTIPLIER, BASELINE)
+                    PEAK = max(rms*PEAK_MULTIPLIER, PEAK)
+                    mySrc.data_signal.emit([rms] + list(mean_in_window))
+                FORWARD += 50*8
+            if (len(channels) - FORWARD) < -150:
                 time.sleep(47/1000)
-                print(f'Current cursor: {FORWARD} - Collected data: {len(channels)}')
+            if (len(channels) - FORWARD) > 300:
+                time.sleep(10/1000) 
+            else:
+                time.sleep(25/1000)
+            delay_time.append(len(channels) - FORWARD)
+            print(f'Current cursor: {FORWARD} - Collected data: {len(channels)} delay: {(len(channels) - FORWARD)}')
 
-            except Exception as e:
-                print("Error during plotting:", type(e),e) 
+        except Exception as e:
+            print("Error during plotting:", type(e),e) 
