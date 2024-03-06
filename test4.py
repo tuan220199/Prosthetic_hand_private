@@ -187,8 +187,8 @@ class SearchWindow(PageWindow):
                 while True:
                     if len(channels)>128: 
                         break
-                #self.myFig = CustomFigCanvaswoRMS()
-                #self.layout.addWidget(self.myFig)
+                self.myFig = CustomFigCanvaswoRMS()
+                self.layout.addWidget(self.myFig)
                 #Add the callbackfunc to ..
 
                 # function continously sends data and update UI
@@ -372,8 +372,13 @@ def dataSendLoop(addData_callbackFunc):
                     else:
                         mySrc.data_signal.emit(list(datastack.mean(1)))
                     FORWARD += 25*8 
-                time.sleep(50/1000)
-            
+                if (len(channels) - FORWARD) < -150:
+                    time.sleep(47/1000)
+                if (len(channels) - FORWARD) > 300:
+                    time.sleep(10/1000) 
+                else:
+                    time.sleep(25/1000)
+                
 
             except Exception as e:
                 print("Error during plotting:", type(e),e) 
