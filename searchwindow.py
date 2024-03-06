@@ -345,7 +345,7 @@ class SearchWindow(PageWindow):
                     if (len(channels) - FORWARD) < 0:
                         FORWARD = FORWARD - 200
                     elif (len(channels) - FORWARD) > 600:
-                        FORWARD = FORWARD + 200
+                        FORWARD = FORWARD + 400
                 except Exception as e:
                     print("Error during saving: ", e)
 
@@ -377,7 +377,7 @@ class SearchWindow(PageWindow):
                 reg = None
             elif button == "skipSignal":
                 #FORWARD += 1000
-                file2 = "recordingfiles/new_timer_8.csv"
+                file2 = "recordingfiles/new_timer_9.csv"
                 with open(file2, 'w', newline='') as csvfile:
                     # Create a CSV writer object
                     csv_writer = csv.writer(csvfile)
@@ -722,7 +722,7 @@ def dataSendLoop(addData_callbackFunc):
             if (len(channels) - FORWARD) < 50:
                 time.sleep(47/1000)
             if (len(channels) - FORWARD) > 600:
-                time.sleep(20/1000) 
+                time.sleep(10/1000) 
             else:
                 time.sleep(25/1000)
             delay_time.append(len(channels) - FORWARD)

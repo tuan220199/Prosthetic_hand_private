@@ -2,7 +2,7 @@ import csv
 import matplotlib.pyplot as plt
 
 # Open the CSV file in read mode
-with open('recordingfiles/new_timer_8.csv', 'r') as file:
+with open('recordingfiles/new_timer_9.csv', 'r') as file:
     # Create a CSV reader object
     csv_reader = csv.reader(file)
     

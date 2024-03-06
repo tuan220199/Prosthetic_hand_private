@@ -487,7 +487,7 @@ class GForceProfile():
         data += struct.pack('<H', channelMask)
         data += struct.pack('<B', dataLen)
         data += struct.pack('<B', resolution)
-        print(data)
+        #print(data)
         def temp(resp, raspData):
             if cb != None:
                 cb(resp)

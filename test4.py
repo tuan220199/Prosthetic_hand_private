@@ -19,10 +19,10 @@ def set_cmd_cb(resp):
     print('Command result: {}'.format(resp))
 
 # try to create a file and write it based on realtime 
-now = datetime.now()
-dt_string = now.strftime("%d/%m/%Y%H:%M:%S")
-os.makedirs(os.path.dirname(f"recordingfiles/{dt_string}.txt"), exist_ok=True)
-file1 = open(f"recordingfiles/{dt_string}.txt","w")
+# now = datetime.now()
+# dt_string = now.strftime("%d/%m/%Y%H:%M:%S")
+# os.makedirs(os.path.dirname(f"recordingfiles/{dt_string}.txt"), exist_ok=True)
+# file1 = open(f"recordingfiles/{dt_string}.txt","w")
 channels = []
 
 actions = list(range(1,4))*2 # Containing numbers 1 to 9 repeats 3 times
@@ -37,7 +37,7 @@ REP = 0
 BASELINE = 100
 BASELINE_MULTIPLIER = 100
 OFFSET_RMS = 0
-STARTED = False
+#STARTED = False
 reg = None
 currentaction = "Flexion"
 ACTIONS = {
@@ -53,7 +53,7 @@ ind_channel = 0
 
 # capture incoming EMG data, store it in a global variable channels
 def ondata(data):
-    global STARTED
+    #global STARTED
     global channels
 
         # Data for EMG CH0~CHn repeatly.
@@ -69,8 +69,8 @@ def ondata(data):
     extracted_data = data[1:]
     channels += extracted_data
     #actions += [ACTION*2+120]*128
-    if STARTED:
-        file1.write(' '.join(map(str, extracted_data)) +"\n")#+' ' + str(ACTION) +' ' + str(REP) +"\n")
+    # if STARTED:
+    #     file1.write(' '.join(map(str, extracted_data)) +"\n")#+' ' + str(ACTION) +' ' + str(REP) +"\n")
 
 class SearchWindow(PageWindow):
     def __init__(self, GF):
@@ -143,8 +143,10 @@ class SearchWindow(PageWindow):
     # create handler functions for different buttons in a graphical user  
     def make_handleButton(self, button, *args):
         def handleButton():
-            global reg, ind_channel, ACTION, REP, PEAK, PEAK_MULTIPLIER, OFFSET, STARTED, BASELINE, BASELINE_MULTIPLIER
-            global OFFSET_RMS, file1,actionLabelglobal, FORWARD
+            #global reg, ind_channel, ACTION, REP, PEAK, PEAK_MULTIPLIER, OFFSET, STARTED, BASELINE, BASELINE_MULTIPLIER
+            global reg, ind_channel, ACTION, REP, PEAK, PEAK_MULTIPLIER, OFFSET, BASELINE, BASELINE_MULTIPLIER
+            #global OFFSET_RMS, file1,actionLabelglobal, FORWARD
+            global OFFSET_RMS, actionLabelglobal, FORWARD
             
             # IF the button is scan 
             # set text for l1, invoke scan method
@@ -358,7 +360,7 @@ def dataSendLoop(addData_callbackFunc):
         for j in range (8):
             
             try:
-                datawindow = channels[FORWARD:FORWARD+50*8]
+                datawindow = channels[FORWARD:FORWARD+100*8]
                 if datawindow:
                     datastack = np.stack([np.array(datawindow[k::8]) for k in range (8)]).astype('float32') - OFFSET
                     #mean_in_window = datastack.mean(1) # should have size (8,)
@@ -371,11 +373,11 @@ def dataSendLoop(addData_callbackFunc):
                         mySrc.data_signal.emit( list(datastack.mean(1)))
                     else:
                         mySrc.data_signal.emit(list(datastack.mean(1)))
-                    FORWARD += 25*8 
-                if (len(channels) - FORWARD) < -150:
+                    FORWARD += 50*8 
+                if (len(channels) - FORWARD) < 50:
                     time.sleep(47/1000)
-                if (len(channels) - FORWARD) > 300:
-                    time.sleep(10/1000) 
+                if (len(channels) - FORWARD) > 600:
+                    time.sleep(20/1000) 
                 else:
                     time.sleep(25/1000)
                 
@@ -388,7 +390,7 @@ def dataSendLoop(addData_callbackFunc):
 
 if __name__ == "__main__":
     import sys
-    sampRate = 500
+    sampRate = 1000
     channelMask = 0xFF
     dataLen = 128
     resolution = 8
