@@ -1,10 +1,8 @@
-
-
 import csv
 import matplotlib.pyplot as plt
 
 # Open the CSV file in read mode
-with open('recordingfiles/new_timer_5.csv', 'r') as file:
+with open('recordingfiles/new_timer_8.csv', 'r') as file:
     # Create a CSV reader object
     csv_reader = csv.reader(file)
     
@@ -20,9 +18,9 @@ with open('recordingfiles/new_timer_5.csv', 'r') as file:
 # Generate x-values based on the index of each data point
 x_values = list(range(1, len(y_values) + 1))
 
-# Plot the graph
-plt.plot(x_values, y_values)
+# Plot the graph as points
+plt.scatter(x_values, y_values)
 plt.xlabel('Index')
 plt.ylabel('Y-axis label')
-plt.title('Line Graph')
+plt.title('Point Graph')
 plt.show()

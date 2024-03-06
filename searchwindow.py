@@ -17,10 +17,6 @@ from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 from joblib import dump, load
 import matplotlib.pyplot as plt
 import csv
-# import torch
-# from encoder import Encoder as E
-# from helpers import get_data, get_all_data, get_shift_data, get_operators, plot_cfs_mat, roll_data
-#import tensorflow as tf
 
 now = datetime.now()
 dt_string = now.strftime("%d/%m/%Y%H:%M:%S")
@@ -313,6 +309,8 @@ class SearchWindow(PageWindow):
                 self.loadMotionButton.setEnabled(False)
                 file1 = open(f"recordingfiles/{dt_string}.txt","w")
                 STARTED= True
+                space = [0] * 300
+                delay_time.extend(space)
 
             elif button == "loadMotion":
                 """
@@ -343,11 +341,17 @@ class SearchWindow(PageWindow):
                     current_action = int(self.subj_motion.text())
                     ACTIONS[current_action][-1] += 1
                     self.loadMotionButton.setEnabled(True)
+                    
+                    if (len(channels) - FORWARD) < 0:
+                        FORWARD = FORWARD - 200
+                    elif (len(channels) - FORWARD) > 600:
+                        FORWARD = FORWARD + 200
                 except Exception as e:
                     print("Error during saving: ", e)
 
                 self.recordSamplButton.setText("Record Experiment")
                 self.recordSamplButton.setEnabled(True)
+                
                 
 
             elif button == "updateMotion":
@@ -373,7 +377,7 @@ class SearchWindow(PageWindow):
                 reg = None
             elif button == "skipSignal":
                 #FORWARD += 1000
-                file2 = "recordingfiles/new_timer_5.csv"
+                file2 = "recordingfiles/new_timer_8.csv"
                 with open(file2, 'w', newline='') as csvfile:
                     # Create a CSV writer object
                     csv_writer = csv.writer(csvfile)
@@ -661,7 +665,6 @@ def ondata(data):
     
     """
     global STARTED, channels, file1
-
         # Data for EMG CH0~CHn repeatly.
         # Resolution set in setEmgRawDataConfig:
         #   8: one byte for one channel
@@ -716,10 +719,10 @@ def dataSendLoop(addData_callbackFunc):
                     PEAK = max(rms*PEAK_MULTIPLIER, PEAK)
                     mySrc.data_signal.emit([rms] + list(mean_in_window))
                 FORWARD += 50*8
-            if (len(channels) - FORWARD) < -150:
+            if (len(channels) - FORWARD) < 50:
                 time.sleep(47/1000)
-            if (len(channels) - FORWARD) > 300:
-                time.sleep(10/1000) 
+            if (len(channels) - FORWARD) > 600:
+                time.sleep(20/1000) 
             else:
                 time.sleep(25/1000)
             delay_time.append(len(channels) - FORWARD)
