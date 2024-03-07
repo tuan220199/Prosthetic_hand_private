@@ -2,7 +2,7 @@ from PyQt5 import  QtWidgets, QtCore, QtGui
 from gforce import  DataNotifFlags
 import os
 from  pagewindow import PageWindow
-from customcanvas import CustomFigCanvas
+from customcanvas import CustomFigCanvas_full, CustomFigCanvas_cue_only, CustomFigCanvaswoRMS
 import threading
 from datetime import datetime
 from helpers import set_cmd_cb, rms_formuula
@@ -47,6 +47,7 @@ start_time = 0
 FORWARD = 0
 ind_channel = 0
 delay_time = []
+full_graph = False
 
 ACTIONS = {
     1: ["Flexion",          "img/Flexion.png",          (None, None),  0],
@@ -206,7 +207,7 @@ class SearchWindow(PageWindow):
         """
         def handleButton():
             global reg,  ACTION, REP, PEAK, PEAK_MULTIPLIER, OFFSET, STARTED, BASELINE, BASELINE_MULTIPLIER
-            global OFFSET_RMS, file1
+            global OFFSET_RMS, file1, full_graph
             global delay_time
             
             if button == "scan":
@@ -252,7 +253,7 @@ class SearchWindow(PageWindow):
                 while True:
                     if len(channels)>128: 
                         break
-                self.myFig = CustomFigCanvas()
+                self.myFig = CustomFigCanvas_cue_only()
                 self.layout.addWidget(self.myFig)
                 #Add the callbackfunc to ..
                 myDataLoop = threading.Thread(name = 'myDataLoop', target = dataSendLoop, daemon = True, args = (self.addData_callbackFunc,))
@@ -385,6 +386,21 @@ class SearchWindow(PageWindow):
                     # Write each element of the list 'a' as a separate row in the CSV file
                     for item in delay_time:
                         csv_writer.writerow([item])
+
+            elif button == "showGraph":
+                if not full_graph:
+                    self.layout.removeWidget(self.myFig)
+                    self.myFig = CustomFigCanvas_full()
+                    self.layout.addWidget(self.myFig)
+                    #Add the callbackfunc to ..
+                    full_graph = True
+                else:
+                    self.layout.removeWidget(self.myFig)
+                    self.myFig = CustomFigCanvas_cue_only()
+                    self.layout.addWidget(self.myFig)
+                    #Add the callbackfunc to ..
+                    full_graph = False
+            #     self.myFig.toggle_graph
 
             elif button == "runModel":
                     subject = self.subj_name.text()
@@ -603,6 +619,10 @@ class SearchWindow(PageWindow):
         self.skipSignalButton.clicked.connect(self.make_handleButton("skipSignal"))
         self.skipSignalButton.setFixedSize(150,30)
 
+        self.graphButton = QtWidgets.QPushButton("Show full graph")
+        self.graphButton.clicked.connect(self.make_handleButton("showGraph"))
+        self.graphButton.setFixedSize(150,30)
+
         self.trainButton = QtWidgets.QPushButton("Run model")
         self.trainButton.clicked.connect(self.make_handleButton("runModel"))
         self.trainButton.setFixedSize(150,30)
@@ -611,6 +631,7 @@ class SearchWindow(PageWindow):
         self.layout3.addWidget(self.recordSamplButton)
         self.layout3.addWidget(stopSamplButton)
         self.layout3.addWidget(self.skipSignalButton)
+        self.layout3.addWidget(self.graphButton)
         self.layout3.addWidget(self.trainButton)
 
         self.subj_name = QtWidgets.QLineEdit("1")
@@ -730,3 +751,4 @@ def dataSendLoop(addData_callbackFunc):
 
         except Exception as e:
             print("Error during plotting:", type(e),e) 
+
