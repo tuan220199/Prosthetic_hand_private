@@ -29,7 +29,7 @@ channelMask = 0xFF
 dataLen = 128
 resolution = 8
 channels = []
-actions = list(range(1,4))*2
+actions = list(range(1,5))*2
 random.shuffle(actions)
 
 OFFSET = 121
@@ -47,12 +47,12 @@ start_time = 0
 FORWARD = 0
 ind_channel = 0
 delay_time = []
-full_graph = False
 
 ACTIONS = {
-    1: ["Flexion",          "img/Flexion.png",          (None, None),  0],
-    2: ["Extension",        "img/Extension.png",        (None, None),  0],
-    3: ["Close palm",       "img/Close.png",            (None, None),  0]
+    1: ["Rest",             "img/Rest.png",             (None, None),  0],
+    2: ["Flexion",          "img/Flexion.png",          (None, None),  0],
+    3: ["Extension",        "img/Extension.png",        (None, None),  0],
+    4: ["Close palm",       "img/Close.png",            (None, None),  0]
     }
 
 def getFeatureMatrix(rawDataMatrix, windowLength, windowOverlap):
@@ -207,7 +207,7 @@ class SearchWindow(PageWindow):
         """
         def handleButton():
             global reg,  ACTION, REP, PEAK, PEAK_MULTIPLIER, OFFSET, STARTED, BASELINE, BASELINE_MULTIPLIER
-            global OFFSET_RMS, file1, full_graph
+            global OFFSET_RMS, file1
             global delay_time
             
             if button == "scan":
@@ -247,7 +247,6 @@ class SearchWindow(PageWindow):
 
                 self.loadNewAction(1)
                 self.layout.addLayout(self.layout3)
-                self.layout.addLayout(self.layout6)
                 
                 QtWidgets.qApp.processEvents()
 
@@ -255,11 +254,7 @@ class SearchWindow(PageWindow):
                     if len(channels)>128: 
                         break
                 self.myFig = CustomFigCanvas_cue_only()
-                self.myFig_8channels = None
-                # self.myFig_8channels = CustomFigCanvas_8channels_only()
-                self.layout6.addWidget(self.myFig)
-                # self.layout6.addWidget(self.myFig_8channels)
-                # self.myFig_8channels.hide()
+                self.layout.addWidget(self.myFig)
                 #Add the callbackfunc to ..
                 myDataLoop = threading.Thread(name = 'myDataLoop', target = dataSendLoop, daemon = True, args = (self.addData_callbackFunc,))
                 myDataLoop.start()
@@ -348,10 +343,13 @@ class SearchWindow(PageWindow):
                     ACTIONS[current_action][-1] += 1
                     self.loadMotionButton.setEnabled(True)
                     
-                    if (len(channels) - FORWARD) < 0:
+                    if (len(channels) - FORWARD) < -50:
                         FORWARD = FORWARD - 200
                     elif (len(channels) - FORWARD) > 600:
                         FORWARD = FORWARD + 400
+                    elif (len(channels) - FORWARD) > 800:
+                        FORWARD = FORWARD + 600
+
                 except Exception as e:
                     print("Error during saving: ", e)
 
@@ -383,7 +381,7 @@ class SearchWindow(PageWindow):
                 reg = None
             elif button == "skipSignal":
                 #FORWARD += 1000
-                file2 = "recordingfiles/new_timer_9.csv"
+                file2 = "recordingfiles/new_timer_10.csv"
                 with open(file2, 'w', newline='') as csvfile:
                     # Create a CSV writer object
                     csv_writer = csv.writer(csvfile)
@@ -391,23 +389,6 @@ class SearchWindow(PageWindow):
                     # Write each element of the list 'a' as a separate row in the CSV file
                     for item in delay_time:
                         csv_writer.writerow([item])
-
-            elif button == "showGraph":
-                if not full_graph:
-                    self.myFig_8channels = CustomFigCanvas_8channels_only()
-                    self.layout6.addWidget(self.myFig_8channels)
-                    self.myFig_8channels.show()
-                    #Add the callbackfunc to ..
-                    full_graph = True
-                    self.graphButton.setText("Show only cue graph")
-                else:
-                    self.myFig_8channels.hide()
-                    self.layout6.removeWidget(self.myFig_8channels)
-                    self.myFig_8channels = None
-                    #Add the callbackfunc to ..
-                    full_graph = False
-                    self.graphButton.setText("Show full graph")
-            #     self.myFig.toggle_graph
 
             elif button == "runModel":
                     subject = self.subj_name.text()
@@ -424,14 +405,14 @@ class SearchWindow(PageWindow):
                     for shift in range(0,int(No_shift)): 
                         for files in sorted(os.listdir(f'Subject_{subject}/Shift_{shift}/')):
                             _, class_,_, rep_ = files.split('_')
-                            if int(class_) in [1,2,3]:
+                            if int(class_) in [1,2,3,4]:
                                 df = pd.read_csv(f'Subject_{subject}/Shift_{shift}/{files}',skiprows=0,sep=' ',header=None)
                                 data_arr = np.stack([np.array(df.T[i::8]).T.flatten().astype('float32') for i in range (8)])
                                 data_arr -= 121
                                 data_arr /= 255.0
                                 feaData = getFeatureMatrix(data_arr, windowLength, windowOverlap)
                                 
-                                if not class_.startswith('9'):
+                                if not class_.startswith('1'):
                                     rms_feature = feaData.sum(0)
                                     baseline = 2*rms_feature[-50:].mean()
                                     start_ = np.argmax(rms_feature[::1]>baseline)
@@ -493,13 +474,10 @@ class SearchWindow(PageWindow):
         return handleButton
     
     def addData_callbackFunc(self, value):
-        global full_graph
         """
         add new value to the myFig through method addData.
         """
         self.myFig.addData(value)
-        if full_graph:
-            self.myFig_8channels.addData(value)
 
     def UiComponents(self):
         """
@@ -629,10 +607,6 @@ class SearchWindow(PageWindow):
         self.skipSignalButton.clicked.connect(self.make_handleButton("skipSignal"))
         self.skipSignalButton.setFixedSize(150,30)
 
-        self.graphButton = QtWidgets.QPushButton("Show full graph")
-        self.graphButton.clicked.connect(self.make_handleButton("showGraph"))
-        self.graphButton.setFixedSize(150,30)
-
         self.trainButton = QtWidgets.QPushButton("Run model")
         self.trainButton.clicked.connect(self.make_handleButton("runModel"))
         self.trainButton.setFixedSize(150,30)
@@ -641,7 +615,6 @@ class SearchWindow(PageWindow):
         self.layout3.addWidget(self.recordSamplButton)
         self.layout3.addWidget(stopSamplButton)
         self.layout3.addWidget(self.skipSignalButton)
-        self.layout3.addWidget(self.graphButton)
         self.layout3.addWidget(self.trainButton)
 
         self.subj_name = QtWidgets.QLineEdit("1")
@@ -686,8 +659,6 @@ class SearchWindow(PageWindow):
         self.actionImg.setAlignment(QtCore.Qt.AlignCenter)
         self.layout5.addWidget(self.actionLabel)
         self.layout5.addWidget(self.actionImg)
-
-        self.layout6 = QtWidgets.QHBoxLayout()
         
 
 def ondata(data):
@@ -747,11 +718,11 @@ def dataSendLoop(addData_callbackFunc):
                 rms = rms_.sum()- OFFSET_RMS
                 
                 if OFFSET_RMS:
-                    mySrc.data_signal.emit([rms] + list(mean_in_window))
+                    mySrc.data_signal.emit([rms])
                 else:
                     BASELINE = min(rms*BASELINE_MULTIPLIER, BASELINE)
                     PEAK = max(rms*PEAK_MULTIPLIER, PEAK)
-                    mySrc.data_signal.emit([rms] + list(mean_in_window))
+                    mySrc.data_signal.emit([rms])
                 FORWARD += 50*8
             if (len(channels) - FORWARD) < -50:
                 time.sleep(47/1000)

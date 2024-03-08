@@ -28,6 +28,7 @@ channels = []
 actions = list(range(1,4))*2 # Containing numbers 1 to 9 repeats 3 times
 random.shuffle(actions)
 actionLabelglobal = None
+actionImageglobal = None
 
 OFFSET = 121
 PEAK = 0
@@ -39,11 +40,12 @@ BASELINE_MULTIPLIER = 100
 OFFSET_RMS = 0
 #STARTED = False
 reg = None
-currentaction = "Flexion"
+currentaction = "Rest"
 ACTIONS = {
-    1: ["Flexion",          "img/Flexion.png",          (None, None),  0],
-    2: ["Extension",        "img/Extension.png",        (None, None),  0],
-    3: ["Close palm",       "img/Close.png",            (None, None),  0]
+    1: ["Rest",             "img/Rest.png",             (None, None),  0],
+    2: ["Flexion",          "img/Flexion.png",          (None, None),  0],
+    3: ["Extension",        "img/Extension.png",        (None, None),  0],
+    4: ["Close palm",       "img/Close.png",            (None, None),  0]
     }
 
 packet_cnt = 0
@@ -102,7 +104,7 @@ class SearchWindow(PageWindow):
          
             if action_baseline:
                 self.e2.setText(f"{action_peak-action_baseline}")
-                self.myFig.update_amp(float(self.e3.text())* (action_peak-action_baseline))
+                # self.myFig.update_amp(float(self.e3.text())* (action_peak-action_baseline))
                 OFFSET_RMS = action_baseline
         except Exception as e:
             print("Error during loading Action: ", e)
@@ -146,7 +148,7 @@ class SearchWindow(PageWindow):
             #global reg, ind_channel, ACTION, REP, PEAK, PEAK_MULTIPLIER, OFFSET, STARTED, BASELINE, BASELINE_MULTIPLIER
             global reg, ind_channel, ACTION, REP, PEAK, PEAK_MULTIPLIER, OFFSET, BASELINE, BASELINE_MULTIPLIER
             #global OFFSET_RMS, file1,actionLabelglobal, FORWARD
-            global OFFSET_RMS, actionLabelglobal, FORWARD
+            global OFFSET_RMS, FORWARD ,actionLabelglobal, actionImageglobal
             
             # IF the button is scan 
             # set text for l1, invoke scan method
@@ -173,14 +175,36 @@ class SearchWindow(PageWindow):
                 self.layout1.addWidget(self.skipSignalButton)
                 self.layout1.addWidget(self.trainModelButton)
 
-                actionLabelglobal.setText('Select a model')
+                # actionLabelglobal.setText('Select a model')
+                # actionLabelglobal.setFont(QtGui.QFont('Arial', 20))
+                # actionLabelglobal.setFixedSize(300,30)
+                # actionLabelglobal.setAlignment(QtCore.Qt.AlignCenter)
+                # self.layout5.addWidget(actionLabelglobal)
+                self.modelTrain = QtWidgets.QLabel()
+                self.modelTrain.setText('Select a model')
+                self.modelTrain.setFont(QtGui.QFont('Arial', 20))
+                self.modelTrain.setFixedSize(300,30)
+                self.modelTrain.setAlignment(QtCore.Qt.AlignCenter)
+                self.layout5.addWidget(self.modelTrain)
+
+
                 actionLabelglobal.setFont(QtGui.QFont('Arial', 20))
-                actionLabelglobal.setFixedSize(300,30)
+                # self.actionLabel.setText(actionLabelglobal)
+                # self.actionLabel.setFont(QtGui.QFont('Arial', 20))
                 actionLabelglobal.setAlignment(QtCore.Qt.AlignCenter)
-                self.layout5.addWidget(actionLabelglobal)
+
+                actionImageglobal.setAlignment(QtCore.Qt.AlignCenter)
+                # self.actionImg = QtWidgets.QLabel()
+                # self.actionImg.setAlignment(QtCore.Qt.AlignCenter)
+
+                self.layout6 =  QtWidgets.QHBoxLayout()
+                self.layout6.addWidget(actionLabelglobal)
+                self.layout6.addWidget(actionImageglobal)
+                # self.layout6.addWidget(self.actionImg)
+
                 self.layout0.addLayout(self.layout5)
                 self.layout.addLayout(self.layout3)
-
+                self.layout.addLayout(self.layout6)
 
     
                 QtWidgets.qApp.processEvents()
@@ -189,15 +213,15 @@ class SearchWindow(PageWindow):
                 while True:
                     if len(channels)>128: 
                         break
-                self.myFig = CustomFigCanvaswoRMS()
-                self.layout.addWidget(self.myFig)
+                # self.myFig = CustomFigCanvaswoRMS()
+                # self.layout.addWidget(self.myFig)
                 #Add the callbackfunc to ..
 
                 # function continously sends data and update UI
                 # execute the dataSendLoop function, which continously processes data and update UI
                 # this sepeartion of tasks into different threads helps maintain a responsive user interface
                 # especially when dealing with time-consuming opeartions like data processing.
-                myDataLoop = threading.Thread(name = 'myDataLoop', target = dataSendLoop, daemon = True, args = (self.addData_callbackFunc,))
+                myDataLoop = threading.Thread(name = 'myDataLoop', target = dataSendLoop, daemon = True)
                 myDataLoop.start()
             
             elif button == "updateMotion":
@@ -211,7 +235,7 @@ class SearchWindow(PageWindow):
             elif button=='backToCollect':
                 reg = None
                 self.trainModelButton.setEnabled(False)
-                actionLabelglobal.setText('Select a model')
+                self.modelTrain.setText('Select a model')
                 QtWidgets.qApp.processEvents()
 
             elif button == "skipSignal":
@@ -221,25 +245,28 @@ class SearchWindow(PageWindow):
             # reg training model is set or not
             elif button == "loadLogRegr":
                 reg = loadLogRegr()
+                self.modelTrain.setText("Logistic Regression")
                 self.trainModelButton.setEnabled(True)
             
             elif button == "loadwoOperator":
                 reg = loadwoOperator()
+                self.modelTrain.setText("Without Operator")
                 self.trainModelButton.setEnabled(True)
             
             elif button == "loadwithOperator":
                 reg = loadwithOperator()
+                self.modelTrain.setText("Operator")
                 self.trainModelButton.setEnabled(True)
 
         return handleButton
     
     # receive the data from some source and add to the figure
-    def addData_callbackFunc(self, value):
-        # print("Add data: " + str(value))
-        self.myFig.addData(value)
+    # def addData_callbackFunc(self, value):
+    #     # print("Add data: " + str(value))
+    #     self.myFig.addData(value)
 
     def UiComponents(self):
-        global actionLabelglobal
+        global actionLabelglobal, actionImageglobal
         # initialized as a vertical box layout, arranges widgets vertically
         self.layout = QtWidgets.QVBoxLayout()
 
@@ -347,13 +374,14 @@ def getFeatureMatrix(rawDataMatrix, features, window_size, overlap_factor):
 rms_formuula = lambda x: np.sqrt(np.mean(x ** 2, axis=1))
 
 # continously process data and emit signals using a signal-slot mechanism 
-def dataSendLoop(addData_callbackFunc):
+def dataSendLoop():
     # Setup the signal-slot mechanism.
     mySrc = Communicate()
     # whenever data is received, the addData_callbackFunc will be invoked
-    mySrc.data_signal.connect(addData_callbackFunc)
+    #mySrc.data_signal.connect(addData_callbackFunc)
     #time.sleep(3)
-    global actionLabelglobal, ACTIONS,FORWARD, reg
+    # global actionLabelglobal, ACTIONS,FORWARD, reg
+    global actionLabelglobal,actionImageglobal, ACTIONS,FORWARD, reg
     while(True):
         #channels[i:i+50*8]
         predictedclasses = []
@@ -370,14 +398,14 @@ def dataSendLoop(addData_callbackFunc):
                     if reg:
                         pred_class = get_class(reg, torch.tensor(rms_.reshape(-1,8))) 
                         predictedclasses.append(pred_class)
-                        mySrc.data_signal.emit( list(datastack.mean(1)))
-                    else:
-                        mySrc.data_signal.emit(list(datastack.mean(1)))
+                    #     mySrc.data_signal.emit( list(datastack.mean(1)))
+                    # else:
+                    #     mySrc.data_signal.emit(list(datastack.mean(1)))
                     FORWARD += 50*8 
-                if (len(channels) - FORWARD) < 50:
+                if (len(channels) - FORWARD) < -50:
                     time.sleep(47/1000)
                 if (len(channels) - FORWARD) > 600:
-                    time.sleep(20/1000) 
+                    time.sleep(10/1000) 
                 else:
                     time.sleep(25/1000)
                 
@@ -387,6 +415,9 @@ def dataSendLoop(addData_callbackFunc):
         if predictedclasses:
             smoothenedclass = mode(predictedclasses)
             actionLabelglobal.setText(f'{ACTIONS[smoothenedclass+1][0]}')
+            pixmap = QtGui.QPixmap(ACTIONS[smoothenedclass+1][1])
+            actionImageglobal.setPixmap(pixmap.scaledToWidth(150))
+
 
 if __name__ == "__main__":
     import sys
@@ -400,6 +431,7 @@ if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     w = SearchWindow(GF)
     actionLabelglobal = QtWidgets.QLabel()
+    actionImageglobal = QtWidgets.QLabel()
 
     w.show()
     sys.exit(app.exec_())
