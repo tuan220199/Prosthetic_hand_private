@@ -7,7 +7,6 @@ from PyQt5.QtGui import *
 from gforce import NotifDataType, DataNotifFlags
 import threading
 import time
-from customcanvas import CustomFigCanvas
 import random
 
 

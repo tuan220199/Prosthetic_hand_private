@@ -2,7 +2,7 @@ from PyQt5 import  QtWidgets, QtCore, QtGui
 from gforce import  DataNotifFlags
 import os
 from  pagewindow import PageWindow
-from customcanvas import CustomFigCanvas_full, CustomFigCanvas_cue_only, CustomFigCanvaswoRMS
+from customcanvas import CustomFigCanvas_full, CustomFigCanvas_cue_only, CustomFigCanvaswoRMS, CustomFigCanvas_8channels_only
 import threading
 from datetime import datetime
 from helpers import set_cmd_cb, rms_formuula
@@ -247,6 +247,7 @@ class SearchWindow(PageWindow):
 
                 self.loadNewAction(1)
                 self.layout.addLayout(self.layout3)
+                self.layout.addLayout(self.layout6)
                 
                 QtWidgets.qApp.processEvents()
 
@@ -254,7 +255,11 @@ class SearchWindow(PageWindow):
                     if len(channels)>128: 
                         break
                 self.myFig = CustomFigCanvas_cue_only()
-                self.layout.addWidget(self.myFig)
+                self.myFig_8channels = None
+                # self.myFig_8channels = CustomFigCanvas_8channels_only()
+                self.layout6.addWidget(self.myFig)
+                # self.layout6.addWidget(self.myFig_8channels)
+                # self.myFig_8channels.hide()
                 #Add the callbackfunc to ..
                 myDataLoop = threading.Thread(name = 'myDataLoop', target = dataSendLoop, daemon = True, args = (self.addData_callbackFunc,))
                 myDataLoop.start()
@@ -389,17 +394,19 @@ class SearchWindow(PageWindow):
 
             elif button == "showGraph":
                 if not full_graph:
-                    self.layout.removeWidget(self.myFig)
-                    self.myFig = CustomFigCanvas_full()
-                    self.layout.addWidget(self.myFig)
+                    self.myFig_8channels = CustomFigCanvas_8channels_only()
+                    self.layout6.addWidget(self.myFig_8channels)
+                    self.myFig_8channels.show()
                     #Add the callbackfunc to ..
                     full_graph = True
+                    self.graphButton.setText("Show only cue graph")
                 else:
-                    self.layout.removeWidget(self.myFig)
-                    self.myFig = CustomFigCanvas_cue_only()
-                    self.layout.addWidget(self.myFig)
+                    self.myFig_8channels.hide()
+                    self.layout6.removeWidget(self.myFig_8channels)
+                    self.myFig_8channels = None
                     #Add the callbackfunc to ..
                     full_graph = False
+                    self.graphButton.setText("Show full graph")
             #     self.myFig.toggle_graph
 
             elif button == "runModel":
@@ -486,10 +493,13 @@ class SearchWindow(PageWindow):
         return handleButton
     
     def addData_callbackFunc(self, value):
+        global full_graph
         """
         add new value to the myFig through method addData.
         """
         self.myFig.addData(value)
+        if full_graph:
+            self.myFig_8channels.addData(value)
 
     def UiComponents(self):
         """
@@ -677,6 +687,9 @@ class SearchWindow(PageWindow):
         self.layout5.addWidget(self.actionLabel)
         self.layout5.addWidget(self.actionImg)
 
+        self.layout6 = QtWidgets.QHBoxLayout()
+        
+
 def ondata(data):
     """
     Function to write data into a gloabl file: file1 
@@ -740,7 +753,7 @@ def dataSendLoop(addData_callbackFunc):
                     PEAK = max(rms*PEAK_MULTIPLIER, PEAK)
                     mySrc.data_signal.emit([rms] + list(mean_in_window))
                 FORWARD += 50*8
-            if (len(channels) - FORWARD) < 50:
+            if (len(channels) - FORWARD) < -50:
                 time.sleep(47/1000)
             if (len(channels) - FORWARD) > 600:
                 time.sleep(10/1000) 
