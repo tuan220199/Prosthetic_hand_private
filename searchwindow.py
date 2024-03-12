@@ -17,6 +17,8 @@ from joblib import dump, load
 import matplotlib.pyplot as plt
 import csv
 import torch
+import torch.nn as nn
+import torch.optim as optim
 from data_loader import CustomSignalData, CustomSignalData1
 from torch.autograd import Variable
 from encoder import Encoder as E
@@ -52,7 +54,7 @@ packet_cnt = 0
 start_time = 0
 FORWARD = 0
 ind_channel = 0
-delay_time = []
+# delay_time = []
 
 ACTIONS = {
     1: ["Flexion",          "img/Flexion.png",          (None, None),  0],
@@ -98,6 +100,37 @@ class FFNN(torch.nn.Module):
         class_z = self.classifer(z)
 
         return class_z
+
+class Operator(nn.Module):
+    def __init__(self, in_features, n_rotations):
+        super(Operator, self).__init__()
+        """
+        Args:
+          in_features (int): Number of input features which should be equal to xsize.
+          out_features (out): Number of output features which should be equal to ysize.
+        """
+        self.in_features = in_features
+        self.core = torch.nn.Parameter(torch.zeros(3*self.in_features**2)- 0*torch.diag(torch.rand(3*self.in_features**2)/10))
+        self.core.requires_grad = True
+        self.n_rotations = n_rotations
+        
+    def rotate_batch(self, x, d, out_features):
+      rotated = torch.empty(x.shape[0], 3*out_features*out_features, device=DEVICE)
+      phies = [torch.linalg.matrix_power(self.core,i).to(DEVICE) for i in range (0,self.n_rotations+0)]
+      for i in range (x.shape[0]):
+        rotated[i] = phies[(d[i]+0)%4].matmul(x[i]) 
+      return rotated
+
+    def forward(self, x, d):
+        """
+        Args:
+          x of shape (batch_size, 3, xsize, xsize): Inputs.
+        
+        Returns:
+          y of shape (batch_size, 3*xsize^2): Outputs.
+        """
+        z = self.rotate_batch(x, d, self.in_features)
+        return z
 
 class SearchWindow(PageWindow):
     """
@@ -239,7 +272,7 @@ class SearchWindow(PageWindow):
         def handleButton():
             global reg,  ACTION, REP, PEAK, PEAK_MULTIPLIER, OFFSET, STARTED, BASELINE, BASELINE_MULTIPLIER
             global OFFSET_RMS, file1, DEVICE
-            global delay_time
+            # global delay_time
             
             if button == "scan":
                 """
@@ -341,8 +374,8 @@ class SearchWindow(PageWindow):
                 self.loadMotionButton.setEnabled(False)
                 file1 = open(f"recordingfiles/{dt_string}.txt","w")
                 STARTED= True
-                space = [0] * 300
-                delay_time.extend(space)
+                # space = [0] * 300
+                # delay_time.extend(space)
 
             elif button == "loadMotion":
                 """
@@ -412,16 +445,23 @@ class SearchWindow(PageWindow):
                 reg = None
             elif button == "skipSignal":
                 #FORWARD += 1000
-                file2 = "recordingfiles/new_timer_10.csv"
-                with open(file2, 'w', newline='') as csvfile:
-                    # Create a CSV writer object
-                    csv_writer = csv.writer(csvfile)
+                # file2 = "recordingfiles/new_timer_10.csv"
+                # with open(file2, 'w', newline='') as csvfile:
+                #     # Create a CSV writer object
+                #     csv_writer = csv.writer(csvfile)
                     
-                    # Write each element of the list 'a' as a separate row in the CSV file
-                    for item in delay_time:
-                        csv_writer.writerow([item])
+                #     # Write each element of the list 'a' as a separate row in the CSV file
+                #     for item in delay_time:
+                #         csv_writer.writerow([item])
+                if (len(channels) - FORWARD) < -50:
+                        FORWARD = FORWARD - 200
+                elif (len(channels) - FORWARD) > 600:
+                    FORWARD = FORWARD + 400
+                elif (len(channels) - FORWARD) > 800:
+                    FORWARD = FORWARD + 600
 
             elif button == "runModel":
+                    print("Training Process ...")
                     subject = self.subj_name.text()
                     No_shift = str(int(self.subj_shift.text()) + 1)
 
@@ -453,11 +493,13 @@ class SearchWindow(PageWindow):
                                     feaData = feaData.T
 
                                 if rep_.startswith('2'):
-                                    X_test, = np.concatenate([X_test,feaData])
+                                    X_test = np.concatenate([X_test,feaData])
                                     y_test = np.concatenate([y_test,np.ones_like(feaData)[:,0]*int(class_)-1])
-                                else:
-                                    X_train = np.concatenate([X_train,feaData])
-                                    y_train= np.concatenate([y_train,np.ones_like(feaData)[:,0]*int(class_)-1])
+                               
+                                X_train = np.concatenate([X_train,feaData])
+                                y_train= np.concatenate([y_train,np.ones_like(feaData)[:,0]*int(class_)-1])
+                    
+                    print("Data load done")
 
                     # Data import 
                     all_X_train, all_y_train, all_shift_train = get_all_data(X_train, y_train)
@@ -479,71 +521,143 @@ class SearchWindow(PageWindow):
                     triplet_train_dataset = CustomSignalData1(get_tensor(all_X1_train), get_tensor(all_X2_train), get_tensor(all_shift_1_train), get_tensor(all_shift_2_train), get_tensor(all_y_shift_train))
                     triplettrainloader = torch.utils.data.DataLoader(triplet_train_dataset, batch_size = 102, shuffle=True)
 
+                    print("Data Rotation done")
+
                     # Operator
-                    M = torch.diag(torch.ones(8)).roll(-1,1)
-                    used_bases = [torch.linalg.matrix_power(M,i).to(DEVICE) for i in range (8)]
+                    # M = torch.diag(torch.ones(8)).roll(-1,1)
+                    # used_bases = [torch.linalg.matrix_power(M,i).to(DEVICE) for i in range (8)]
 
-                    # Logistic Regresison models 
-                    reg = LogisticRegression(penalty='l2', C=100).fit(X_train, y_train)
-                    dump(reg, 'LogisticRegression1.joblib')
-                    accuracies_LosReg = []
+                    # # Logistic Regresison models 
+                    # reg = LogisticRegression(penalty='l2', C=100).fit(X_train, y_train)
+                    # dump(reg, 'LogisticRegression1.joblib')
+                    # accuracies_LosReg = []
+                    # for i in range (-4, 4):
+                    #     X_test_shift = roll_data(X_train, i)
+                    #     accuracies_LosReg.append(reg.score(X_test_shift,y_train)) 
+
+                    # print("Training Regression Logistic done")                  
+                    
+                    # # Feed Forward Neural Network
+                    # inputDim = 8     # takes variable 'x' 
+                    # outputDim = 9      # takes variable 'y'
+                    # learningRate = 0.005
+
+                    # model = FFNN(inputDim, outputDim)
+                    # model = model.to(DEVICE)
+                    
+                    # crit = torch.nn.CrossEntropyLoss()
+                    # acc_record = []
+                    # params_clf = list(model.parameters())# + list(encoder.parameters())
+                    # optim = torch.optim.Adam(params_clf, lr=learningRate)
+                    
+                    # epochs = 200
+                    # #encoder = encoder.to(device)
+                    # for epoch in range(epochs):
+                    #     model.train()
+
+                    #     # Converting inputs and labels to Variable
+                    #     for inputs, labels, _, _ in alltrainloader:
+                    #         inputs = inputs.to(DEVICE)
+                    #         labels = labels.to(DEVICE)
+                    #         labels = labels.long()
+                    #         labels = labels.flatten()
+                    #         outputs = model(inputs, None)
+                    #         optim.zero_grad()
+                    #         # get loss for the predicted output
+                    #         losss = crit(outputs, labels) #+ 0.001 * model.l1_regula()
+                    #         # get gradients w.r.t to parameters
+                    #         losss.backward()
+                    #         # update parameters
+                    #         optim.step()
+
+                    # accuracies_ffnn = []
+                    # for i in range (-4, 4):
+                    #     X_test_shift = roll_data(X_train, i)
+                    #     test_shift_dataset = CustomSignalData(get_tensor(X_test_shift), get_tensor(y_train))
+                    #     testshiftloader = torch.utils.data.DataLoader(test_shift_dataset, batch_size=24, shuffle=True)
+                    #     accuracies_ffnn.append(clf_acc(model, testshiftloader, encoder = None))
+
+                    # torch.save(model.state_dict(), "modelwoOperator.pt")
+
+                    # Self-supervised learning model
+                    encoder = E(8,8)
+                    encoder.to(DEVICE)
+                    classifier = FFNN(8,9)
+                    classifier.to(DEVICE)
+
+                    parameters = list(encoder.parameters()) + list(classifier.parameters())
+
+                    crit1 = torch.nn.MSELoss()
+                    crit2 = torch.nn.CrossEntropyLoss()
+                    crit1.to(DEVICE)
+                    crit2.to(DEVICE)
+                    loss_record = []
+
+                    optimizer = torch.optim.Adam(parameters, lr=0.002)
+                    n_epochs = 50
+
+                    for epoch in range(0,n_epochs):
+                        encoder.train()
+                        classifier.train()
+                        for inputs1, inputs2, shift1, shift2, labels, _ in triplettrainloader:
+                            inputs1 = inputs1.to(DEVICE)
+                            inputs2 = inputs2.to(DEVICE)
+                            shift1 = -shift1.int().flatten().to(DEVICE)
+                            shift2 = -shift2.int().flatten().to(DEVICE)
+                            labels = labels.long().flatten().to(DEVICE)
+                            # zero the parameter gradients
+                            optimizer.zero_grad()
+                            
+                            # forward + backward + optimize
+                            y1 = encoder(inputs1)
+                            y_tr_est1 = rotate_batch(y1,shift1,6)
+                            y_tr1 = classifier(y_tr_est1)
+
+
+                            y2 = encoder(inputs2)
+                            y_tr_est2 = rotate_batch(y2,shift2,6)
+                            y_tr2 = classifier(y_tr_est2)
+
+                            loss =  crit1(y_tr_est1, y_tr_est2) + 0.5*crit2(y_tr1,labels)+ 0.5*crit2(y_tr2,labels)
+                            loss.backward()
+                            optimizer.step()
+
+                    torch.save(classifier.state_dict(), "classifier.pt")
+                    torch.save(encoder.state_dict(), "encoder.pt")
+
+                    accuracies_operator = []
                     for i in range (-4, 4):
                         X_test_shift = roll_data(X_train, i)
-                        accuracies_LosReg.append(reg.score(X_test_shift,y_train))                   
-                    
-                    # Feed Forward Neural Network
-                    inputDim = 8     # takes variable 'x' 
-                    outputDim = 9      # takes variable 'y'
-                    learningRate = 0.005
+                        y1 = encoder(get_tensor(X_test_shift))
+                        y_tr_est1 = rotate_batch(y1, -torch.ones(X_test_shift.shape[0]).int() * i,6)
+                        y_tr1 = classifier(y_tr_est1)
+                        accuracies_operator.append((1-torch.abs(torch.sign(torch.argmax(y_tr1,dim = 1)- get_tensor(y_train).flatten()))).mean())
 
-                    model = FFNN(inputDim, outputDim)
-                    model = model.to(DEVICE)
-                    
-                    crit = torch.nn.CrossEntropyLoss()
-                    acc_record = []
-                    params_clf = list(model.parameters())# + list(encoder.parameters())
-                    optim = torch.optim.Adam(params_clf, lr=learningRate)
-                    
-                    epochs = 200
-                    #encoder = encoder.to(device)
-                    for epoch in range(epochs):
-                        model.train()
+                    with torch.no_grad():
+                        encoder.eval()
+                        N_points = 1000
+                        rand_idx = np.random.choice(all_X_train.shape[0], N_points)
+                        y_tr = encoder(get_tensor(all_X_train[rand_idx]))
+                        recovered_points_ = rotate_batch(y_tr,-all_shift_train[rand_idx].flatten(), 6)
+                        del y_tr
 
-                        # Converting inputs and labels to Variable
-                        for inputs, labels, _, _ in alltrainloader:
-                            inputs = inputs.to(DEVICE)
-                            labels = labels.to(DEVICE)
-                            labels = labels.long()
-                            labels = labels.flatten()
-                            outputs = model(inputs, None)
-                            optim.zero_grad()
-                            # get loss for the predicted output
-                            losss = crit(outputs, labels) #+ 0.001 * model.l1_regula()
-                            # get gradients w.r.t to parameters
-                            losss.backward()
-                            # update parameters
-                            optim.step()
-
-                        # if not epoch %20:
-                        #     train_acc = clf_acc(model, alltrainloader,encoder= None)
-                        #     #test_acc = clf_acc(model, alltestloader, encoder = None)
-                        #     acc_record += [train_acc]# [(train_acc, test_acc)]
-
-                    accuracies_ffnn = []
-                    for i in range (-4, 4):
-                        X_test_shift = roll_data(X_train, i)
-                        test_shift_dataset = CustomSignalData(get_tensor(X_test_shift), get_tensor(y_train))
-                        testshiftloader = torch.utils.data.DataLoader(test_shift_dataset, batch_size=24, shuffle=True)
-                        accuracies_ffnn.append(clf_acc(model, testshiftloader, encoder = None))
-
-                    torch.save(model.state_dict(), "modelwoOperator.pt")
+                    torch.save(recovered_points_, "reference_points.pt")
 
                     # Check the accuracies
-                    if accuracies_LosReg and accuracies_ffnn:
+                    # if accuracies_LosReg and accuracies_ffnn and accuracies_operator:
+                    #     self.trainButton.setText("Done")
+                    #     print(f'Logistic Regression: {accuracies_LosReg}')
+                    #     print(f'FFNN: {accuracies_ffnn}')
+                    #     print(f'Self-supervised: {accuracies_operator}')
+                    # else:
+                    #     self.trainButton.setText("Error")
+                    #     print("Error:")
+
+                    if accuracies_operator:
                         self.trainButton.setText("Done")
-                        print(f'Logistic Regression: {accuracies_LosReg}')
-                        print(f'FFNN: {accuracies_ffnn}')
+                        print(f'Self-supervised: {accuracies_operator}')
                     else:
+                        self.trainButton.setText("Error")
                         print("Error:")
 
         return handleButton
@@ -779,7 +893,7 @@ def dataSendLoop(addData_callbackFunc):
     """
     mySrc = Communicate()
     mySrc.data_signal.connect(addData_callbackFunc)
-    global PEAK, PEAK_MULTIPLIER, BASELINE, OFFSET_RMS, BASELINE_MULTIPLIER,ACTIONS,FORWARD, delay_time
+    global PEAK, PEAK_MULTIPLIER, BASELINE, OFFSET_RMS, BASELINE_MULTIPLIER,ACTIONS,FORWARD#, delay_time
 
     while(True):
         #channels[i:i+50*8]
@@ -805,8 +919,8 @@ def dataSendLoop(addData_callbackFunc):
                 time.sleep(10/1000) 
             else:
                 time.sleep(25/1000)
-            delay_time.append(len(channels) - FORWARD)
-            print(f'Current cursor: {FORWARD} - Collected data: {len(channels)} delay: {(len(channels) - FORWARD)}')
+            # delay_time.append(len(channels) - FORWARD)
+            # print(f'Current cursor: {FORWARD} - Collected data: {len(channels)} delay: {(len(channels) - FORWARD)}')
 
         except Exception as e:
             print("Error during plotting:", type(e),e) 
@@ -815,6 +929,8 @@ def get_tensor(arr):
     return torch.tensor(arr, device=DEVICE,dtype=torch.float )
 
 def rotate_batch(x, d, out_features):
+    M = torch.diag(torch.ones(8)).roll(-1,1)
+    used_bases = [torch.linalg.matrix_power(M,i).to(DEVICE) for i in range (8)]
     rotated = torch.empty(x.shape, device=DEVICE)
     for i in range (x.shape[0]):
         rotated[i] = used_bases[d[i]].matmul(x[i]) 

@@ -169,7 +169,7 @@ class CustomFigCanvas_cue_only(FigureCanvas, TimedAnimation):
         self.convolemask = np.ones(15)/15
         self.cue_line = np.zeros(500)#, np.linspace(0, self.amplitude, 100), np.ones(200) * self.amplitude,np.linspace( self.amplitude, 0,100),np.zeros(150) ])
         self.extra = np.arange(0,self.scale*9,self.scale)
-        print(self.cue_line.shape)
+        # print(self.cue_line.shape)
         self.y = np.zeros([500,9]) - self.extra # An array reprenting the y-axis ticks
         #self.labels = (self.n * 0.0) + 50
         
@@ -279,7 +279,7 @@ class CustomFigCanvas_cue_only(FigureCanvas, TimedAnimation):
             self.y[-1,:] = new_data
             self.y[-1,:] -= self.extra
             plottingdata = self.moving_average(self.y[:,0], 15)
-            print(plottingdata.shape)
+            # print(plottingdata.shape)
             #plottingdata = np.concatenate([self.y,np.zeros([100])])
 
             #self.n = np.roll(self.n, -1)

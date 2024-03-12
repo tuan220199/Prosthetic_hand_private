@@ -37,7 +37,7 @@ class FFNN(torch.nn.Module):
 logRegres  = load('LogisticRegression1.joblib')
 #RNN_model = load('RNN.joblib')
 
-classifier = FFNN(8,3) # This indicates that the neural network expects input data with 8 features and will produce output predictions across 9 classes.
+classifier = FFNN(8,9) # This indicates that the neural network expects input data with 8 features and will produce output predictions across 9 classes.
 encoder = E(8,8)
 encoder.load_state_dict(torch.load("encoder.pt")) # contains the learned parameters (weights and biases) of the encoder model
 recovered_points_= torch.load("reference_points.pt") # These points represent reference points for inference or evaluation in the model
