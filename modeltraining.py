@@ -47,7 +47,7 @@ classifier.eval() # sets the model to evaluation mode.
 encoder.eval() # sets the model to evaluation mode.
 
 # # This model is without opeartor. It is similiarily to the classifier model but do not have encoder
-modelWOoperator = FFNN(8,3)
+modelWOoperator = FFNN(8,9)
 modelWOoperator.load_state_dict(torch.load("modelwoOperator.pt")) # loaded from the file: parameters learned during training.
 modelWOoperator.eval() # evaluation mode ensures consistent behavior during inference.
 

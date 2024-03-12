@@ -13,10 +13,16 @@ import numpy as np
 import numpy as np
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 from joblib import dump, load
 import matplotlib.pyplot as plt
 import csv
+import torch
+from data_loader import CustomSignalData, CustomSignalData1
+from torch.autograd import Variable
+from encoder import Encoder as E
+from helpers import get_data, get_all_data, get_shift_data, get_operators, plot_cfs_mat, roll_data
+
+DEVICE = torch.device("cpu")
 
 now = datetime.now()
 dt_string = now.strftime("%d/%m/%Y%H:%M:%S")
@@ -29,7 +35,7 @@ channelMask = 0xFF
 dataLen = 128
 resolution = 8
 channels = []
-actions = list(range(1,5))*2
+actions = list(range(1,10))*2
 random.shuffle(actions)
 
 OFFSET = 121
@@ -49,10 +55,15 @@ ind_channel = 0
 delay_time = []
 
 ACTIONS = {
-    1: ["Rest",             "img/Rest.png",             (None, None),  0],
-    2: ["Flexion",          "img/Flexion.png",          (None, None),  0],
-    3: ["Extension",        "img/Extension.png",        (None, None),  0],
-    4: ["Close palm",       "img/Close.png",            (None, None),  0]
+    1: ["Flexion",          "img/Flexion.png",          (None, None),  0],
+    2: ["Extension",        "img/Extension.png",        (None, None),  0],
+    3: ["Ulnar Deviation",  "img/UlnarDeviation.png",   (None, None),  0],
+    4: ["Radial Deviation", "img/RadialDeviation.png",  (None, None),  0],
+    5: ["Supination",       "img/Supination.png",       (None, None),  0],
+    6: ["Pronation",        "img/Pronation.png",        (None, None),  0],
+    7: ["Open palm",        "img/Open.png",             (None, None),  0],
+    8: ["Close palm",       "img/Close.png",            (None, None),  0],
+    9: ["Rest",             "img/Rest.png",             (None, None),  0]
     }
 
 def getFeatureMatrix(rawDataMatrix, windowLength, windowOverlap):
@@ -67,6 +78,26 @@ def getFeatureMatrix(rawDataMatrix, windowLength, windowOverlap):
             featMatrix[channel, i] = rms(sigWin)
     featMatrixData = np.array(featMatrix)
     return featMatrixData
+
+class FFNN(torch.nn.Module):
+    def __init__(self, inputSize, outputSize):
+        super(FFNN, self).__init__()
+        self.encoder = torch.nn.Sequential(
+            torch.nn.Linear(inputSize, 9, bias=False),
+            torch.nn.Sigmoid()
+        )
+        self.classifer = torch.nn.Sequential(
+            torch.nn.Linear(9, outputSize, bias=False),
+            # torch.nn.Softmax(dim=1)
+        )
+
+    def forward(self, x, encoder=None):
+        if not encoder:
+            encoder = self.encoder
+        z = encoder(x)
+        class_z = self.classifer(z)
+
+        return class_z
 
 class SearchWindow(PageWindow):
     """
@@ -207,7 +238,7 @@ class SearchWindow(PageWindow):
         """
         def handleButton():
             global reg,  ACTION, REP, PEAK, PEAK_MULTIPLIER, OFFSET, STARTED, BASELINE, BASELINE_MULTIPLIER
-            global OFFSET_RMS, file1
+            global OFFSET_RMS, file1, DEVICE
             global delay_time
             
             if button == "scan":
@@ -398,21 +429,21 @@ class SearchWindow(PageWindow):
                     windowLength = int(np.floor(0.1*Fs))  #160ms
                     windowOverlap =  int(np.floor(50/100 * windowLength))
 
-                    train_features = np.zeros([0,8])
-                    train_labels = np.zeros([0])
-                    test_features = np.zeros([0,8])
-                    test_labels = np.zeros([0])
+                    X_train = np.zeros([0,8])
+                    y_train= np.zeros([0])
+                    X_test = np.zeros([0,8])
+                    y_test = np.zeros([0])
                     for shift in range(0,int(No_shift)): 
                         for files in sorted(os.listdir(f'Subject_{subject}/Shift_{shift}/')):
                             _, class_,_, rep_ = files.split('_')
-                            if int(class_) in [1,2,3,4]:
+                            if int(class_) in [1,2,3,4,5,6,7,8,9]:
                                 df = pd.read_csv(f'Subject_{subject}/Shift_{shift}/{files}',skiprows=0,sep=' ',header=None)
                                 data_arr = np.stack([np.array(df.T[i::8]).T.flatten().astype('float32') for i in range (8)])
                                 data_arr -= 121
                                 data_arr /= 255.0
                                 feaData = getFeatureMatrix(data_arr, windowLength, windowOverlap)
                                 
-                                if not class_.startswith('1'):
+                                if not class_.startswith('9'):
                                     rms_feature = feaData.sum(0)
                                     baseline = 2*rms_feature[-50:].mean()
                                     start_ = np.argmax(rms_feature[::1]>baseline)
@@ -421,53 +452,97 @@ class SearchWindow(PageWindow):
                                 else:
                                     feaData = feaData.T
 
-                                train_features = np.concatenate([train_features,feaData])
-                                train_labels = np.concatenate([train_labels,np.ones_like(feaData)[:,0]*int(class_)-1])
+                                if rep_.startswith('2'):
+                                    X_test, = np.concatenate([X_test,feaData])
+                                    y_test = np.concatenate([y_test,np.ones_like(feaData)[:,0]*int(class_)-1])
+                                else:
+                                    X_train = np.concatenate([X_train,feaData])
+                                    y_train= np.concatenate([y_train,np.ones_like(feaData)[:,0]*int(class_)-1])
 
-                                # if rep_.startswith('2'):
-                                #     test_features = np.concatenate([test_features,feaData])
-                                #     test_labels = np.concatenate([test_labels,np.ones_like(feaData)[:,0]*int(class_)-1])
-                                # else:
-                                #     train_features = np.concatenate([train_features,feaData])
-                                #     train_labels = np.concatenate([train_labels,np.ones_like(feaData)[:,0]*int(class_)-1])
+                    # Data import 
+                    all_X_train, all_y_train, all_shift_train = get_all_data(X_train, y_train)
+                    all_X_test, all_y_test, all_shift_test = get_all_data(X_test, y_test)
 
-                    reg = LogisticRegression(penalty='l2', C=100).fit(train_features, train_labels)
-                    # reg.score(train_features, train_labels)#, reg.score(test_features, test_labels)
+                    all_X1_train, all_X2_train, all_shift_1_train, all_shift_2_train, all_y_shift_train = get_shift_data(all_X_train, all_shift_train, all_y_train)
+                    all_X1_test, all_X2_test, all_shift_1_test, all_shift_2_test, all_y_shift_test = get_shift_data(all_X_test, all_shift_test, all_y_test)
 
-                    # disp = ConfusionMatrixDisplay(confusion_matrix=confusion_matrix(train_labels, reg.predict(train_features)),
-                    #                         display_labels=reg.classes_)
-                    # disp.plot()
+                    # Data loader
+                    traindataset = CustomSignalData(get_tensor(X_train), get_tensor(y_train))
+                    #testdataset = CustomSignalData(get_tensor(X_test), get_tensor(y_test))
 
+                    trainloader = torch.utils.data.DataLoader(traindataset, batch_size = 1, shuffle=True)
+                    #testloader = torch.utils.data.DataLoader(testdataset, batch_size=24, shuffle=True)
+
+                    all_train_dataset = CustomSignalData(get_tensor(all_X_train), get_tensor(all_y_train))
+                    alltrainloader = torch.utils.data.DataLoader(all_train_dataset, batch_size = 102, shuffle=True)
+
+                    triplet_train_dataset = CustomSignalData1(get_tensor(all_X1_train), get_tensor(all_X2_train), get_tensor(all_shift_1_train), get_tensor(all_shift_2_train), get_tensor(all_y_shift_train))
+                    triplettrainloader = torch.utils.data.DataLoader(triplet_train_dataset, batch_size = 102, shuffle=True)
+
+                    # Operator
+                    M = torch.diag(torch.ones(8)).roll(-1,1)
+                    used_bases = [torch.linalg.matrix_power(M,i).to(DEVICE) for i in range (8)]
+
+                    # Logistic Regresison models 
+                    reg = LogisticRegression(penalty='l2', C=100).fit(X_train, y_train)
                     dump(reg, 'LogisticRegression1.joblib')
-                    accuracy_list = [reg.score(train_features,train_labels)]
+                    accuracies_LosReg = []
+                    for i in range (-4, 4):
+                        X_test_shift = roll_data(X_train, i)
+                        accuracies_LosReg.append(reg.score(X_test_shift,y_train))                   
                     
-                    #train_features_reshaped = train_features.reshape(train_features.shape[0], train_features.shape[1], -1)
-                    #test_features_reshaped = test_features.reshape(test_features.shape[0], test_features.shape[1], -1)
+                    # Feed Forward Neural Network
+                    inputDim = 8     # takes variable 'x' 
+                    outputDim = 9      # takes variable 'y'
+                    learningRate = 0.005
 
-
-                    # # Define the RNN model
-                    # rnn_model = tf.keras.Sequential([
-                    #     tf.keras.layers.SimpleRNN(64, activation='relu', input_shape=train_features_reshaped.shape[1:]),  # Use train_features_reshaped.shape[1:] as input shape
-                    #     tf.keras.layers.Dense(128, activation='relu'),  # Adding an additional dense layer with 128 units
-                    #     tf.keras.layers.Dense(128, activation='relu'),  # Adding another dense layer with 128 units
-                    #     tf.keras.layers.Dense(3, activation='softmax')
-                    # ])
-
-                    # # Compile the RNN model
-                    # rnn_model.compile(optimizer='adam',
-                    #                 loss='sparse_categorical_crossentropy',  # Use this if train_labels are integers
-                    #                 metrics=['accuracy'])
-
-                    # # Train the RNN model
-                    # history = rnn_model.fit(train_features_reshaped, train_labels, epochs=10, batch_size=32, validation_split=0.2)
-
-                    # # Evaluate the RNN model on training and test data
-                    # train_loss, train_accuracy = rnn_model.evaluate(train_features_reshaped, train_labels, verbose=0)
-                    # test_loss, test_accuracy = rnn_model.evaluate(test_features_reshaped, test_labels, verbose=0)
-
+                    model = FFNN(inputDim, outputDim)
+                    model = model.to(DEVICE)
                     
-                    if accuracy_list:
+                    crit = torch.nn.CrossEntropyLoss()
+                    acc_record = []
+                    params_clf = list(model.parameters())# + list(encoder.parameters())
+                    optim = torch.optim.Adam(params_clf, lr=learningRate)
+                    
+                    epochs = 200
+                    #encoder = encoder.to(device)
+                    for epoch in range(epochs):
+                        model.train()
+
+                        # Converting inputs and labels to Variable
+                        for inputs, labels, _, _ in alltrainloader:
+                            inputs = inputs.to(DEVICE)
+                            labels = labels.to(DEVICE)
+                            labels = labels.long()
+                            labels = labels.flatten()
+                            outputs = model(inputs, None)
+                            optim.zero_grad()
+                            # get loss for the predicted output
+                            losss = crit(outputs, labels) #+ 0.001 * model.l1_regula()
+                            # get gradients w.r.t to parameters
+                            losss.backward()
+                            # update parameters
+                            optim.step()
+
+                        # if not epoch %20:
+                        #     train_acc = clf_acc(model, alltrainloader,encoder= None)
+                        #     #test_acc = clf_acc(model, alltestloader, encoder = None)
+                        #     acc_record += [train_acc]# [(train_acc, test_acc)]
+
+                    accuracies_ffnn = []
+                    for i in range (-4, 4):
+                        X_test_shift = roll_data(X_train, i)
+                        test_shift_dataset = CustomSignalData(get_tensor(X_test_shift), get_tensor(y_train))
+                        testshiftloader = torch.utils.data.DataLoader(test_shift_dataset, batch_size=24, shuffle=True)
+                        accuracies_ffnn.append(clf_acc(model, testshiftloader, encoder = None))
+
+                    torch.save(model.state_dict(), "modelwoOperator.pt")
+
+                    # Check the accuracies
+                    if accuracies_LosReg and accuracies_ffnn:
                         self.trainButton.setText("Done")
+                        print(f'Logistic Regression: {accuracies_LosReg}')
+                        print(f'FFNN: {accuracies_ffnn}')
                     else:
                         print("Error:")
 
@@ -736,3 +811,61 @@ def dataSendLoop(addData_callbackFunc):
         except Exception as e:
             print("Error during plotting:", type(e),e) 
 
+def get_tensor(arr):
+    return torch.tensor(arr, device=DEVICE,dtype=torch.float )
+
+def rotate_batch(x, d, out_features):
+    rotated = torch.empty(x.shape, device=DEVICE)
+    for i in range (x.shape[0]):
+        rotated[i] = used_bases[d[i]].matmul(x[i]) 
+    return rotated
+
+def clf_acc(model, loader, masks = None, encoder = None):
+    model.eval()
+    correct = 0
+    iter = 0
+    with torch.no_grad():
+        for inputs, labels,_,_ in loader:
+            inputs = inputs.to(DEVICE)
+            if masks is not None:
+                inputs = inputs * masks[:inputs.size()[0]]
+            labels = labels.to(DEVICE)
+            labels = labels.flatten()
+            if encoder:
+                pred = model(inputs, encoder)
+            else:
+                pred = model(inputs)
+            correct += (1-torch.abs(torch.sign(torch.argmax(pred,dim = 1)- labels))).mean().item()
+            iter += 1
+    return correct/iter
+
+def compute_accuracy(a, b, loader):
+    a.eval()
+    b.eval()
+    
+    correct = 0
+    iter = 0
+    
+    with torch.no_grad():
+        for inputs1, inputs2, shift1, shift2, labels, _ in loader:
+            inputs1 = inputs1.to(DEVICE)
+            inputs2 = inputs2.to(DEVICE)
+            shift1 = -shift1.int().flatten().to(DEVICE)
+            shift2 = -shift2.int().flatten().to(DEVICE)
+            labels = labels.flatten().to(DEVICE)
+            # zero the parameter gradients
+            optimizer.zero_grad()
+            
+            # forward + backward + optimize
+            y1 = a(inputs1)
+            y_tr_est1 = rotate_batch(y1,shift1,6)
+            y_tr1 = b(y_tr_est1)
+
+            y2 = a(inputs2)
+            y_tr_est2 = rotate_batch(y2,shift1,6)
+            y_tr2 = b(y_tr_est2)
+
+            correct += (1-torch.abs(torch.sign(torch.argmax(y_tr1,dim = 1)- labels))).mean().item() + \
+                    (1-torch.abs(torch.sign(torch.argmax(y_tr2,dim = 1)- labels))).mean().item()
+            iter += 1
+    return correct * 0.5 / iter
