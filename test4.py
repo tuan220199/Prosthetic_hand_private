@@ -25,8 +25,7 @@ def set_cmd_cb(resp):
 # file1 = open(f"recordingfiles/{dt_string}.txt","w")
 channels = []
 
-actions = list(range(1,10))*2 # Containing numbers 1 to 9 repeats 3 times
-random.shuffle(actions)
+
 actionLabelglobal = None
 actionImageglobal = None
 
@@ -390,7 +389,7 @@ def dataSendLoop():
     while(True):
         #channels[i:i+50*8]
         predictedclasses = []
-        for j in range (8):
+        for j in range (16):
             
             try:
                 datawindow = channels[FORWARD:FORWARD+100*8]

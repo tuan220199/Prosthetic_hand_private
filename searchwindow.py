@@ -10,7 +10,6 @@ import random
 from communicate import Communicate
 import time
 import numpy as np
-import numpy as np
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
 from joblib import dump, load
@@ -471,8 +470,8 @@ class SearchWindow(PageWindow):
 
                     X_train = np.zeros([0,8])
                     y_train= np.zeros([0])
-                    X_test = np.zeros([0,8])
-                    y_test = np.zeros([0])
+                    # X_test = np.zeros([0,8])
+                    # y_test = np.zeros([0])
                     for shift in range(0,int(No_shift)): 
                         for files in sorted(os.listdir(f'Subject_{subject}/Shift_{shift}/')):
                             _, class_,_, rep_ = files.split('_')
@@ -492,9 +491,9 @@ class SearchWindow(PageWindow):
                                 else:
                                     feaData = feaData.T
 
-                                if rep_.startswith('2'):
-                                    X_test = np.concatenate([X_test,feaData])
-                                    y_test = np.concatenate([y_test,np.ones_like(feaData)[:,0]*int(class_)-1])
+                                # if rep_.startswith('2'):
+                                #     X_test = np.concatenate([X_test,feaData])
+                                #     y_test = np.concatenate([y_test,np.ones_like(feaData)[:,0]*int(class_)-1])
                                
                                 X_train = np.concatenate([X_train,feaData])
                                 y_train= np.concatenate([y_train,np.ones_like(feaData)[:,0]*int(class_)-1])
@@ -503,10 +502,10 @@ class SearchWindow(PageWindow):
 
                     # Data import 
                     all_X_train, all_y_train, all_shift_train = get_all_data(X_train, y_train)
-                    all_X_test, all_y_test, all_shift_test = get_all_data(X_test, y_test)
+                    # all_X_test, all_y_test, all_shift_test = get_all_data(X_test, y_test)
 
                     all_X1_train, all_X2_train, all_shift_1_train, all_shift_2_train, all_y_shift_train = get_shift_data(all_X_train, all_shift_train, all_y_train)
-                    all_X1_test, all_X2_test, all_shift_1_test, all_shift_2_test, all_y_shift_test = get_shift_data(all_X_test, all_shift_test, all_y_test)
+                    # all_X1_test, all_X2_test, all_shift_1_test, all_shift_2_test, all_y_shift_test = get_shift_data(all_X_test, all_shift_test, all_y_test)
 
                     # Data loader
                     traindataset = CustomSignalData(get_tensor(X_train), get_tensor(y_train))
@@ -523,52 +522,52 @@ class SearchWindow(PageWindow):
 
                     print("Data Rotation done")
 
-                    # Operator
-                    # M = torch.diag(torch.ones(8)).roll(-1,1)
-                    # used_bases = [torch.linalg.matrix_power(M,i).to(DEVICE) for i in range (8)]
+                    Operator
+                    M = torch.diag(torch.ones(8)).roll(-1,1)
+                    used_bases = [torch.linalg.matrix_power(M,i).to(DEVICE) for i in range (8)]
 
-                    # # Logistic Regresison models 
-                    # reg = LogisticRegression(penalty='l2', C=100).fit(X_train, y_train)
-                    # dump(reg, 'LogisticRegression1.joblib')
+                    # Logistic Regresison models 
+                    reg = LogisticRegression(penalty='l2', C=100).fit(X_train, y_train)
+                    dump(reg, 'LogisticRegression1.joblib')
                     # accuracies_LosReg = []
                     # for i in range (-4, 4):
                     #     X_test_shift = roll_data(X_train, i)
                     #     accuracies_LosReg.append(reg.score(X_test_shift,y_train)) 
 
-                    # print("Training Regression Logistic done")                  
+                    print("Training Regression Logistic done")                  
                     
-                    # # Feed Forward Neural Network
-                    # inputDim = 8     # takes variable 'x' 
-                    # outputDim = 9      # takes variable 'y'
-                    # learningRate = 0.005
+                    # Feed Forward Neural Network
+                    inputDim = 8     # takes variable 'x' 
+                    outputDim = 9      # takes variable 'y'
+                    learningRate = 0.005
 
-                    # model = FFNN(inputDim, outputDim)
-                    # model = model.to(DEVICE)
+                    model = FFNN(inputDim, outputDim)
+                    model = model.to(DEVICE)
                     
-                    # crit = torch.nn.CrossEntropyLoss()
-                    # acc_record = []
-                    # params_clf = list(model.parameters())# + list(encoder.parameters())
-                    # optim = torch.optim.Adam(params_clf, lr=learningRate)
+                    crit = torch.nn.CrossEntropyLoss()
+                    acc_record = []
+                    params_clf = list(model.parameters())# + list(encoder.parameters())
+                    optim = torch.optim.Adam(params_clf, lr=learningRate)
                     
-                    # epochs = 200
-                    # #encoder = encoder.to(device)
-                    # for epoch in range(epochs):
-                    #     model.train()
+                    epochs = 200
+                    #encoder = encoder.to(device)
+                    for epoch in range(epochs):
+                        model.train()
 
-                    #     # Converting inputs and labels to Variable
-                    #     for inputs, labels, _, _ in alltrainloader:
-                    #         inputs = inputs.to(DEVICE)
-                    #         labels = labels.to(DEVICE)
-                    #         labels = labels.long()
-                    #         labels = labels.flatten()
-                    #         outputs = model(inputs, None)
-                    #         optim.zero_grad()
-                    #         # get loss for the predicted output
-                    #         losss = crit(outputs, labels) #+ 0.001 * model.l1_regula()
-                    #         # get gradients w.r.t to parameters
-                    #         losss.backward()
-                    #         # update parameters
-                    #         optim.step()
+                        # Converting inputs and labels to Variable
+                        for inputs, labels, _, _ in alltrainloader:
+                            inputs = inputs.to(DEVICE)
+                            labels = labels.to(DEVICE)
+                            labels = labels.long()
+                            labels = labels.flatten()
+                            outputs = model(inputs, None)
+                            optim.zero_grad()
+                            # get loss for the predicted output
+                            losss = crit(outputs, labels) #+ 0.001 * model.l1_regula()
+                            # get gradients w.r.t to parameters
+                            losss.backward()
+                            # update parameters
+                            optim.step()
 
                     # accuracies_ffnn = []
                     # for i in range (-4, 4):
@@ -577,9 +576,11 @@ class SearchWindow(PageWindow):
                     #     testshiftloader = torch.utils.data.DataLoader(test_shift_dataset, batch_size=24, shuffle=True)
                     #     accuracies_ffnn.append(clf_acc(model, testshiftloader, encoder = None))
 
-                    # torch.save(model.state_dict(), "modelwoOperator.pt")
+                    torch.save(model.state_dict(), "modelwoOperator.pt")
 
                     # Self-supervised learning model
+                    print("Start self-supervised training")
+                    start_time = time.time()
                     encoder = E(8,8)
                     encoder.to(DEVICE)
                     classifier = FFNN(8,9)
@@ -625,13 +626,13 @@ class SearchWindow(PageWindow):
                     torch.save(classifier.state_dict(), "classifier.pt")
                     torch.save(encoder.state_dict(), "encoder.pt")
 
-                    accuracies_operator = []
-                    for i in range (-4, 4):
-                        X_test_shift = roll_data(X_train, i)
-                        y1 = encoder(get_tensor(X_test_shift))
-                        y_tr_est1 = rotate_batch(y1, -torch.ones(X_test_shift.shape[0]).int() * i,6)
-                        y_tr1 = classifier(y_tr_est1)
-                        accuracies_operator.append((1-torch.abs(torch.sign(torch.argmax(y_tr1,dim = 1)- get_tensor(y_train).flatten()))).mean())
+                    # accuracies_operator = []
+                    # for i in range (-4, 4):
+                    #     X_test_shift = roll_data(X_train, i)
+                    #     y1 = encoder(get_tensor(X_test_shift))
+                    #     y_tr_est1 = rotate_batch(y1, -torch.ones(X_test_shift.shape[0]).int() * i,6)
+                    #     y_tr1 = classifier(y_tr_est1)
+                    #     accuracies_operator.append((1-torch.abs(torch.sign(torch.argmax(y_tr1,dim = 1)- get_tensor(y_train).flatten()))).mean())
 
                     with torch.no_grad():
                         encoder.eval()
@@ -642,7 +643,9 @@ class SearchWindow(PageWindow):
                         del y_tr
 
                     torch.save(recovered_points_, "reference_points.pt")
-
+                    end_time = time.time()
+                    print("Done self-supervised training")
+                    print(f'Execute time: {start_time-end_time}')
                     # Check the accuracies
                     # if accuracies_LosReg and accuracies_ffnn and accuracies_operator:
                     #     self.trainButton.setText("Done")
@@ -653,12 +656,13 @@ class SearchWindow(PageWindow):
                     #     self.trainButton.setText("Error")
                     #     print("Error:")
 
-                    if accuracies_operator:
-                        self.trainButton.setText("Done")
-                        print(f'Self-supervised: {accuracies_operator}')
-                    else:
-                        self.trainButton.setText("Error")
-                        print("Error:")
+                    # if accuracies_LosReg and accuracies_ffnn and accuracies_operator:
+                    #     self.trainButton.setText("Done")
+                    #     print(f'Self-supervised: {accuracies_operator}')
+                    # else:
+                    #     self.trainButton.setText("Error")
+                    #     print("Error:")
+                    self.trainButton.setText("Done")
 
         return handleButton
     
