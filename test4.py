@@ -389,7 +389,7 @@ def dataSendLoop():
     while(True):
         #channels[i:i+50*8]
         predictedclasses = []
-        for j in range (16):
+        for j in range (8):
             
             try:
                 datawindow = channels[FORWARD:FORWARD+100*8]

@@ -34,21 +34,21 @@ class FFNN(torch.nn.Module):
         class_z = self.classifer(z)
 
         return class_z
-logRegres  = load('LogisticRegression1.joblib')
+logRegres  = load('LogisticRegression_limit_data.joblib')
 #RNN_model = load('RNN.joblib')
 
 classifier = FFNN(8,9) # This indicates that the neural network expects input data with 8 features and will produce output predictions across 9 classes.
 encoder = E(8,8)
-encoder.load_state_dict(torch.load("encoder.pt")) # contains the learned parameters (weights and biases) of the encoder model
-recovered_points_= torch.load("reference_points.pt") # These points represent reference points for inference or evaluation in the model
+encoder.load_state_dict(torch.load("encoder_limit_data.pt")) # contains the learned parameters (weights and biases) of the encoder model
+recovered_points_= torch.load("reference_points_limit_data.pt") # These points represent reference points for inference or evaluation in the model
 print(recovered_points_)
-classifier.load_state_dict(torch.load("classifier.pt")) # contains the weights and biases learned during training.
+classifier.load_state_dict(torch.load("classifier_limit_data.pt")) # contains the weights and biases learned during training.
 classifier.eval() # sets the model to evaluation mode.
 encoder.eval() # sets the model to evaluation mode.
 
 # # This model is without opeartor. It is similiarily to the classifier model but do not have encoder
 modelWOoperator = FFNN(8,9)
-modelWOoperator.load_state_dict(torch.load("modelwoOperator.pt")) # loaded from the file: parameters learned during training.
+modelWOoperator.load_state_dict(torch.load("modelwoOperator_limit_data.pt")) # loaded from the file: parameters learned during training.
 modelWOoperator.eval() # evaluation mode ensures consistent behavior during inference.
 
 DEVICE = torch.device("cpu") # operations is in CPU or GPU.
