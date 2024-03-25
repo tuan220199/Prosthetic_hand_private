@@ -472,7 +472,7 @@ class SearchWindow(PageWindow):
                     y_train= np.zeros([0])
                     # X_test = np.zeros([0,8])
                     # y_test = np.zeros([0])
-                    for shift in range(0,int(No_shift)): 
+                    for shift in range(0,8): 
                         for files in sorted(os.listdir(f'Subject_{subject}/Shift_{shift}/')):
                             _, class_,_, rep_ = files.split('_')
                             if int(class_) in [1,2,3,4,5,6,7,8,9]:
