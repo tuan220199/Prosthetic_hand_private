@@ -188,7 +188,7 @@ class SearchWindow(PageWindow):
                 self.layout5.addWidget(self.modelTrain)
 
 
-                actionLabelglobal.setFont(QtGui.QFont('Arial', 20))
+                actionLabelglobal.setFont(QtGui.QFont('Arial', 40))
                 # self.actionLabel.setText(actionLabelglobal)
                 # self.actionLabel.setFont(QtGui.QFont('Arial', 20))
                 actionLabelglobal.setAlignment(QtCore.Qt.AlignCenter)
@@ -197,7 +197,7 @@ class SearchWindow(PageWindow):
                 # self.actionImg = QtWidgets.QLabel()
                 # self.actionImg.setAlignment(QtCore.Qt.AlignCenter)
 
-                self.layout6 =  QtWidgets.QHBoxLayout()
+                self.layout6 =  QtWidgets.QVBoxLayout()
                 self.layout6.addWidget(actionLabelglobal)
                 self.layout6.addWidget(actionImageglobal)
                 # self.layout6.addWidget(self.actionImg)
