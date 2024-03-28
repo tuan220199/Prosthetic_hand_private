@@ -194,6 +194,7 @@ class SearchWindow(PageWindow):
                 actionLabelglobal.setAlignment(QtCore.Qt.AlignCenter)
 
                 actionImageglobal.setAlignment(QtCore.Qt.AlignCenter)
+                
                 # self.actionImg = QtWidgets.QLabel()
                 # self.actionImg.setAlignment(QtCore.Qt.AlignCenter)
 
@@ -432,6 +433,7 @@ if __name__ == "__main__":
     w = SearchWindow(GF)
     actionLabelglobal = QtWidgets.QLabel()
     actionImageglobal = QtWidgets.QLabel()
+
 
     w.show()
     sys.exit(app.exec_())
