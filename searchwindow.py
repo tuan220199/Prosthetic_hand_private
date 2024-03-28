@@ -36,7 +36,7 @@ channelMask = 0xFF
 dataLen = 128
 resolution = 8
 channels = []
-actions = list(range(1,10))*2
+actions = list(range(1,10))*3
 random.shuffle(actions)
 
 OFFSET = 121
