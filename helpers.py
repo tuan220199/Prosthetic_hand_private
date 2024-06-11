@@ -86,6 +86,28 @@ def get_all_data(X, y, v_shift = None):
         all_shift =[np.ones(shape, dtype='int')*v_shift for (v_shift, shape) in zip(v_shift,shapes)]
         return np.concatenate(X).reshape(-1,8), np.concatenate(y).reshape(-1,1), np.concatenate(all_shift).reshape(-1,1)
 
+def get_all_data_full_feature(X, y, v_shift=None):
+    num_features = 5  # Number of features in the feature matrix
+    num_channels = 8  # Number of channels
+
+    if v_shift is None:
+        all_X = np.zeros([X.shape[0], 8, num_channels * num_features], dtype='float32')
+        all_y = np.zeros([y.shape[0], 8], dtype='float32')
+        all_shift = np.zeros([y.shape[0], 8], dtype='int')
+
+        for i, shift in enumerate(range(-4, 4)):
+            X_i = roll_data(X, shift)
+            all_X[:, i, :] = X_i
+            all_y[:, i] = y
+            all_shift[:, i] = shift
+
+        return all_X.reshape(-1, num_channels * num_features), all_y.reshape(-1, 1), all_shift.reshape(-1, 1)
+    else:
+        shapes = [X_.shape[0] for X_ in X]
+        all_shift = [np.ones(shape, dtype='int') * v_shift for (v_shift, shape) in zip(v_shift, shapes)]
+        return np.concatenate(X).reshape(-1, num_channels * num_features), np.concatenate(y).reshape(-1, 1), np.concatenate(all_shift).reshape(-1, 1)
+
+
 def get_shift_data(all_X, all_shift, all_y):
     all_X_shift = np.concatenate([all_X, all_shift], axis=1)
     all_X1 = np.zeros_like(all_X)
@@ -105,6 +127,35 @@ def get_shift_data(all_X, all_shift, all_y):
         all_shift_1[class_idx] = class_data[:,-1:]
         all_shift_2[class_idx] = class_data_clone[:,-1:]
         all_y_[class_idx] = class_label
+    return all_X1, all_X2, all_shift_1, all_shift_2, all_y_
+
+def get_shift_data_full_features(all_X, all_shift, all_y):
+    num_features = 5  # Number of features in the feature matrix
+    num_channels = 8  # Number of channels
+    feature_dim = num_channels * num_features
+
+    # Combine features with shift values
+    all_X_shift = np.concatenate([all_X, all_shift], axis=1)
+    
+    # Initialize arrays with correct dimensions
+    all_X1 = np.zeros_like(all_X)
+    all_X2 = np.zeros_like(all_X)
+    all_y_ = np.zeros_like(all_y)
+    all_shift_1 = np.zeros_like(all_y)
+    all_shift_2 = np.zeros_like(all_y)
+
+    for class_label in range(9):
+        class_idx = all_y.flatten() == class_label
+        class_data = all_X_shift[class_idx]
+        class_data_clone = class_data.copy()
+        np.random.shuffle(class_data_clone)
+
+        all_X1[class_idx] = class_data[:, :-1]
+        all_X2[class_idx] = class_data_clone[:, :-1]
+        all_shift_1[class_idx] = class_data[:, -1:]
+        all_shift_2[class_idx] = class_data_clone[:, -1:]
+        all_y_[class_idx] = class_label
+
     return all_X1, all_X2, all_shift_1, all_shift_2, all_y_
 
 def get_shift_data1(h_X,v_X, h_shift, v_shift, h_y, v_y):
